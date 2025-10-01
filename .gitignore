@@ -1,0 +1,17 @@
+# 同步黑名单
+
+# PyCharm配置目录
+.idea/
+
+# Python 虚拟环境
+venv/
+
+# Python 编译缓存
+__pycache__/
+
+# 数据缓存/临时文件（根据你项目定制）
+*.parquet
+*.csv
+*.png
+*.json
+*.bsp
