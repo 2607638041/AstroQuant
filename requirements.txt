@@ -1,0 +1,7 @@
+vectorbt
+ccxt
+pandas
+numpy
+matplotlib
+pytz
+colorama
