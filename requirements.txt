@@ -1,7 +1,11 @@
-vectorbt
+# requirements.txt
+# 依赖库清单
+
 ccxt
 pandas
 numpy
 matplotlib
 pytz
 colorama
+tqdm
+pyarrow
