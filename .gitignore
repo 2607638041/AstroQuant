@@ -10,7 +10,6 @@ venv/
 __pycache__/
 
 # 数据缓存/临时文件（根据你项目定制）
-*.parquet
 *.csv
 *.png
 *.json
