@@ -93,7 +93,8 @@ for item in solar_terms_raw:
                 continue
     if d is None:
         continue
-    solar_terms_dict[d.strftime("%Y-%m-%d")] = normalize_term_name(name)
+    # 使用date对象而不是字符串
+    solar_terms_dict[d] = normalize_term_name(name)
 
 SOLAR_TERM_KEY_DATES = {}
 for dt, nm in solar_terms_dict.items():
@@ -183,7 +184,7 @@ REF_DATE = date(2017, 2, 6)
 REF_DAY_STAR_INDEX = 1
 
 def compute_day_stars_range(start_date: date, end_date: date):
-    term_dates_sorted = sorted([(datetime.strptime(d, "%Y-%m-%d").date(), n)
+    term_dates_sorted = sorted([(datetime.strptime(d, "%Y-%m-%d").date() if isinstance(d, str) else d, n)
                                 for d, n in SOLAR_TERM_KEY_DATES.items()
                                 if n in SOLAR_TERM_DAY_STAR])
     term_dates_sorted.append((end_date + timedelta(days=1), None))
@@ -198,7 +199,8 @@ def compute_day_stars_range(start_date: date, end_date: date):
             day_full = gj.get("day_gan", "") + gj.get("day_zhi", "")
             if day_full == "甲子":
                 star_num, direction = SOLAR_TERM_DAY_STAR[term_name]
-                reset_map[cur.strftime("%Y-%m-%d")] = (star_num, direction)
+                # 使用date对象而不是字符串
+                reset_map[cur] = (star_num, direction)
             cur += timedelta(days=1)
 
     day_star_map = {}
@@ -206,10 +208,10 @@ def compute_day_stars_range(start_date: date, end_date: date):
     s = REF_DAY_STAR_INDEX
     dirc = "forward"
     while cur <= end_date:
-        ds = cur.strftime("%Y-%m-%d")
-        if ds in reset_map:
-            s, dirc = reset_map[ds]
-        day_star_map[ds] = NUM_TO_STAR[s]
+        # 使用date对象而不是字符串
+        if cur in reset_map:
+            s, dirc = reset_map[cur]
+        day_star_map[cur] = NUM_TO_STAR[s]
 
         if dirc == "forward":
             s += 1
@@ -230,8 +232,9 @@ def generate_jiuxing_df(start_date: date, end_date: date):
     day_star_map = compute_day_stars_range(start_date, end_date)
     cur = start_date
     for _ in tqdm(range(total), desc="生成九星数据"):
-        date_str = cur.strftime("%Y-%m-%d")  # 直接字符串化
-        day_star = day_star_map.get(date_str, "")
+        # 在导出前将日期对象转换为字符串
+        date_str = cur.strftime("%Y-%m-%d")
+        day_star = day_star_map.get(cur, "")
         month_star = compute_month_star_by_ganzhi(cur)
         rows.append({
             "日期": date_str,

@@ -51,7 +51,9 @@ def generate_jian_xing_data():
             month_zhi = record[5] if len(record) > 5 else (month_ganzhi[-1] if month_ganzhi else '')
         else:
             continue
-        ganzhi_dict[date_str] = {
+        # 使用date对象而不是字符串
+        date_obj = datetime.datetime.strptime(date_str, '%Y-%m-%d').date()
+        ganzhi_dict[date_obj] = {
             'month_zhi': month_zhi,
             'day_zhi': day_ganzhi[-1] if day_ganzhi else ''
         }
@@ -65,8 +67,8 @@ def generate_jian_xing_data():
 
     with tqdm(total=total_days, desc="生成十二建星数据") as pbar:
         while current_date <= end_date:
-            date_str = current_date.strftime('%Y-%m-%d')
-            info = ganzhi_dict.get(date_str, {})
+            # 使用date对象而不是字符串
+            info = ganzhi_dict.get(current_date, {})
             month_zhi = info.get('month_zhi', '')
             day_zhi = info.get('day_zhi', '')
 
@@ -76,6 +78,8 @@ def generate_jian_xing_data():
             jx_index = ( (day_index - month_index + 12) % 12 )
             jx = jian_xing[jx_index]
 
+            # 在导出前将日期对象转换为字符串
+            date_str = current_date.strftime('%Y-%m-%d')
             data_rows.append({
                 '日期': date_str,
                 '建星': jx

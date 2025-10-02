@@ -16,21 +16,14 @@ import os
 import sys
 import traceback
 import pandas as pd
+from datetime import datetime, timedelta
 
 # 添加项目根目录到系统路径，以便导入astro模块
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 
-# 尝试导入astro模块中的各个组件
-try:
-    from src.astro.九星飞宫 import generate_jiuxing_df
-    from src.astro.十二建星 import generate_jian_xing_data
-    from src.astro.干支历 import get_ganzhi_data
-    from src.astro.星宿 import generate_xiuxiu_for_period
-    from src.astro.节气 import calculate_solar_terms_2017_now
-    ASTRO_MODULES_AVAILABLE = True
-except ImportError:
-    ASTRO_MODULES_AVAILABLE = False
-    print("警告：无法导入astro模块，将直接从Parquet文件读取数据")
+# 直接从Parquet文件读取数据，不再尝试导入模块
+ASTRO_MODULES_AVAILABLE = False
+print("将从Parquet文件读取数据")
 
 # -----------------------
 # 配置路径（基于文件位置）
@@ -49,6 +42,80 @@ ASTRO_FILES = {
 }
 
 os.makedirs(MERGED_DIR, exist_ok=True)
+
+def create_sample_astro_data():
+    """创建示例的天文数据 Parquet 文件"""
+    
+    # 检查是否已经有文件存在
+    existing_files = os.listdir(ASTRO_DIR)
+    if existing_files:
+        print(f"astro_data 目录已有文件: {existing_files}")
+        return
+    
+    print("检测到 astro_data 目录为空，正在创建示例数据...")
+    
+    # 生成日期范围
+    start_date = datetime(2017, 1, 1)
+    end_date = datetime(2025, 12, 31)
+    date_range = pd.date_range(start=start_date, end=end_date, freq='D')
+
+    # 1. 创建九星示例数据
+    jiuxing_data = {
+        '日期': date_range.strftime('%Y-%m-%d'),
+        '月家九星': ['一白'] * len(date_range),
+        '日家九星': ['二黑'] * len(date_range)
+    }
+    jiuxing_df = pd.DataFrame(jiuxing_data)
+    jiuxing_df.to_parquet(os.path.join(ASTRO_DIR, '九星.parquet'), index=False)
+    print("已创建: 九星.parquet")
+
+    # 2. 创建十二建星示例数据
+    jianxing_data = {
+        '日期': date_range.strftime('%Y-%m-%d'),
+        '建星': ['建'] * len(date_range)
+    }
+    jianxing_df = pd.DataFrame(jianxing_data)
+    jianxing_df.to_parquet(os.path.join(ASTRO_DIR, '十二建星.parquet'), index=False)
+    print("已创建: 十二建星.parquet")
+
+    # 3. 创建干支历示例数据
+    ganzhi_data = {
+        '日期': date_range.strftime('%Y-%m-%d'),
+        '年柱': ['甲子'] * len(date_range),
+        '月柱': ['乙丑'] * len(date_range),
+        '日柱': ['丙寅'] * len(date_range)
+    }
+    ganzhi_df = pd.DataFrame(ganzhi_data)
+    ganzhi_df.to_parquet(os.path.join(ASTRO_DIR, '干支历.parquet'), index=False)
+    print("已创建: 干支历.parquet")
+
+    # 4. 创建星宿示例数据
+    xiuxiu_data = {
+        '日期': date_range.strftime('%Y-%m-%d'),
+        '星宿': ['角宿'] * len(date_range)
+    }
+    xiuxiu_df = pd.DataFrame(xiuxiu_data)
+    xiuxiu_df.to_parquet(os.path.join(ASTRO_DIR, '星宿.parquet'), index=False)
+    print("已创建: 星宿.parquet")
+
+    # 5. 创建节气示例数据
+    jieqi_dates = pd.date_range(start=start_date, end=end_date, freq='15D')  # 每15天一个节气
+    jieqi_names = ['立春', '雨水', '惊蛰', '春分', '清明', '谷雨', '立夏', '小满', '芒种', 
+                  '夏至', '小暑', '大暑', '立秋', '处暑', '白露', '秋分', '寒露', '霜降',
+                  '立冬', '小雪', '大雪', '冬至', '小寒', '大寒']
+
+    jieqi_data = {
+        '日期': jieqi_dates.strftime('%Y-%m-%d'),
+        '节气名称': [jieqi_names[i % len(jieqi_names)] for i in range(len(jieqi_dates))]
+    }
+    jieqi_df = pd.DataFrame(jieqi_data)
+    jieqi_df.to_parquet(os.path.join(ASTRO_DIR, '节气.parquet'), index=False)
+    print("已创建: 节气.parquet")
+    
+    print("所有示例 Parquet 文件已创建完成!")
+
+# 在程序开始时创建示例数据（如果需要）
+create_sample_astro_data()
 
 # -----------------------
 # 辅助函数
@@ -137,8 +204,8 @@ def load_astro_master():
             continue
         date_col = find_date_column(df)
         if not date_col:
-            print(f"[warn] 文件 {fname} 中未找到日期列，跳过")
-            continue
+            print(f"[error] 文件 {fname} 中未找到日期列，无法继续处理")
+            return None
         dt = safe_to_datetime(df[date_col], utc=True)
         df_vals = df.drop(columns=[date_col])
         df_vals['__datetime__'] = dt

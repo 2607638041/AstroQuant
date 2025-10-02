@@ -78,6 +78,7 @@ def generate_xiuxiu_for_period(start_date, end_date, reference_date=datetime.dat
         # 计算目标日期的星宿索引
         target_index = (base_index - offset + 28) % 28
         
+        # 使用date对象而不是字符串
         result[current_date] = xiuxiu_list[target_index]
         current_date += datetime.timedelta(days=1)
     
@@ -94,7 +95,7 @@ def export_xiuxiu_to_parquet():
     print("开始计算每日星宿数据...")
     xiuxiu_data = generate_xiuxiu_for_period(start_date, end_date)
     
-    # 转换为DataFrame
+    # 转换为DataFrame，在导出前将日期对象转换为字符串
     df = pd.DataFrame([(date.strftime('%Y-%m-%d'), xiuxiu + "宿") for date, xiuxiu in xiuxiu_data.items()], 
                       columns=['日期', '星宿'])
     

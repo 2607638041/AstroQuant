@@ -3,7 +3,7 @@
 
 
 import os
-from datetime import timedelta, datetime
+from datetime import timedelta, datetime, date
 import pandas as pd
 from skyfield import almanac
 from skyfield import almanac_east_asia as almanac_ea
@@ -37,8 +37,9 @@ def calculate_solar_terms_2017_now():
         utc_time = time.utc_datetime()
         # 转换为北京时间（UTC+8）
         beijing_time = utc_time + timedelta(hours=8)
-        time_str = beijing_time.strftime('%Y-%m-%d')
-        result.append((time_str, term_name))
+        # 使用date对象而不是字符串
+        date_obj = beijing_time.date()
+        result.append((date_obj, term_name))
     return result
 
 def classify_solar_terms(solar_terms_data):
@@ -60,6 +61,9 @@ def export_solar_terms_to_parquet():
     
     # 转换为DataFrame
     df = pd.DataFrame(solar_terms_2017_now, columns=['日期', '节气名称'])
+    
+    # 在导出前将日期对象转换为字符串
+    df['日期'] = df['日期'].apply(lambda x: x.strftime('%Y-%m-%d') if isinstance(x, date) else x)
     
     # 设置导出文件路径到项目根目录下的data/astro_data目录
     project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
