@@ -4,12 +4,13 @@
 merge_features.py
 
 功能：
-- 将 data/btc_data_5m 下的 BTC 5m 文件（按年单文件或最新年份按月目录）与
-  data/astro_data 下的玄学特征（九星、十二建星、干支历、星宿、节气）合并，输出到 data/merged/btc/btc_5m。
-- 月份文件优先，如果最新年份有月份文件，则按月合并。
-- 玄学 master 使用时间索引合并，避免重复列名导致错误。
-- 数据清洗：时间统一、删除重复、数值列转换、节气向后填充。
-- 输出前将 datetime 列格式化为字符串（默认 "%Y-%m-%d %H:%M"）。
+- 将 data/btc_data_5m 下的 BTC 5m 文件与
+  data/astro_data 下的玄学特征（九星、十二建星、干支历、星宿、节气）合并
+- 输出到 data/merged/btc/btc_5m
+- 月份文件优先，如果最新年份有月份文件，则按月合并
+- 玄学 master 使用时间索引合并，避免重复列名
+- 数据清洗：时间统一、删除重复、数值列转换、节气向后填充
+- 输出前将 datetime 列格式化为字符串（默认 "%Y-%m-%d %H:%M"）
 """
 
 import os
@@ -18,15 +19,11 @@ import traceback
 import pandas as pd
 from datetime import datetime, timedelta
 
-# 添加项目根目录到系统路径，以便导入astro模块
+# 添加项目根目录到系统路径
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 
-# 直接从Parquet文件读取数据，不再尝试导入模块
-ASTRO_MODULES_AVAILABLE = False
-print("将从Parquet文件读取数据")
-
 # -----------------------
-# 配置路径（基于文件位置）
+# 配置路径
 # -----------------------
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 BTC_DIR = os.path.join(ROOT_DIR, 'data', 'btc_data_5m')
@@ -43,85 +40,60 @@ ASTRO_FILES = {
 
 os.makedirs(MERGED_DIR, exist_ok=True)
 
+# -----------------------
+# 辅助函数
+# -----------------------
 def create_sample_astro_data():
     """创建示例的天文数据 Parquet 文件"""
-    
-    # 检查是否已经有文件存在
-    existing_files = os.listdir(ASTRO_DIR)
-    if existing_files:
-        print(f"astro_data 目录已有文件: {existing_files}")
-        return
-    
-    print("检测到 astro_data 目录为空，正在创建示例数据...")
-    
-    # 生成日期范围
+    os.makedirs(ASTRO_DIR, exist_ok=True)
     start_date = datetime(2017, 1, 1)
     end_date = datetime(2025, 12, 31)
     date_range = pd.date_range(start=start_date, end=end_date, freq='D')
 
-    # 1. 创建九星示例数据
-    jiuxing_data = {
-        '日期': date_range.strftime('%Y-%m-%d'),
+    # 九星
+    jiuxing_df = pd.DataFrame({
+        '日期': date_range.strftime('%Y-%m-%d %H:%M'),
         '月家九星': ['一白'] * len(date_range),
         '日家九星': ['二黑'] * len(date_range)
-    }
-    jiuxing_df = pd.DataFrame(jiuxing_data)
+    })
     jiuxing_df.to_parquet(os.path.join(ASTRO_DIR, '九星.parquet'), index=False)
-    print("已创建: 九星.parquet")
 
-    # 2. 创建十二建星示例数据
-    jianxing_data = {
-        '日期': date_range.strftime('%Y-%m-%d'),
+    # 十二建星
+    jianxing_df = pd.DataFrame({
+        '日期': date_range.strftime('%Y-%m-%d %H:%M'),
         '建星': ['建'] * len(date_range)
-    }
-    jianxing_df = pd.DataFrame(jianxing_data)
+    })
     jianxing_df.to_parquet(os.path.join(ASTRO_DIR, '十二建星.parquet'), index=False)
-    print("已创建: 十二建星.parquet")
 
-    # 3. 创建干支历示例数据
-    ganzhi_data = {
-        '日期': date_range.strftime('%Y-%m-%d'),
+    # 干支历
+    ganzhi_df = pd.DataFrame({
+        '日期': date_range.strftime('%Y-%m-%d %H:%M'),
         '年柱': ['甲子'] * len(date_range),
         '月柱': ['乙丑'] * len(date_range),
         '日柱': ['丙寅'] * len(date_range)
-    }
-    ganzhi_df = pd.DataFrame(ganzhi_data)
+    })
     ganzhi_df.to_parquet(os.path.join(ASTRO_DIR, '干支历.parquet'), index=False)
-    print("已创建: 干支历.parquet")
 
-    # 4. 创建星宿示例数据
-    xiuxiu_data = {
-        '日期': date_range.strftime('%Y-%m-%d'),
+    # 星宿
+    xiuxiu_df = pd.DataFrame({
+        '日期': date_range.strftime('%Y-%m-%d %H:%M'),
         '星宿': ['角宿'] * len(date_range)
-    }
-    xiuxiu_df = pd.DataFrame(xiuxiu_data)
+    })
     xiuxiu_df.to_parquet(os.path.join(ASTRO_DIR, '星宿.parquet'), index=False)
-    print("已创建: 星宿.parquet")
 
-    # 5. 创建节气示例数据
-    jieqi_dates = pd.date_range(start=start_date, end=end_date, freq='15D')  # 每15天一个节气
-    jieqi_names = ['立春', '雨水', '惊蛰', '春分', '清明', '谷雨', '立夏', '小满', '芒种', 
-                  '夏至', '小暑', '大暑', '立秋', '处暑', '白露', '秋分', '寒露', '霜降',
-                  '立冬', '小雪', '大雪', '冬至', '小寒', '大寒']
-
-    jieqi_data = {
-        '日期': jieqi_dates.strftime('%Y-%m-%d'),
-        '节气名称': [jieqi_names[i % len(jieqi_names)] for i in range(len(jieqi_dates))]
-    }
-    jieqi_df = pd.DataFrame(jieqi_data)
+    # 节气
+    jieqi_dates = pd.date_range(start=start_date, end=end_date, freq='15D')
+    jieqi_names = ['立春', '雨水', '惊蛰', '春分', '清明', '谷雨', '立夏', '小满', '芒种',
+                   '夏至', '小暑', '大暑', '立秋', '处暑', '白露', '秋分', '寒露', '霜降',
+                   '立冬', '小雪', '大雪', '冬至', '小寒', '大寒']
+    jieqi_df = pd.DataFrame({
+        '日期': jieqi_dates.strftime('%Y-%m-%d %H:%M'),
+        '节气': [jieqi_names[i % len(jieqi_names)] for i in range(len(jieqi_dates))]
+    })
     jieqi_df.to_parquet(os.path.join(ASTRO_DIR, '节气.parquet'), index=False)
-    print("已创建: 节气.parquet")
-    
-    print("所有示例 Parquet 文件已创建完成!")
 
-# 在程序开始时创建示例数据（如果需要）
-create_sample_astro_data()
-
-# -----------------------
-# 辅助函数
-# -----------------------
 def find_date_column(df: pd.DataFrame):
-    """在 df 中猜测日期列名称，返回列名或 None"""
+    """猜测日期列"""
     for c in df.columns:
         low = c.lower()
         if 'date' in low or '时间' in c or '日期' in c:
@@ -129,131 +101,100 @@ def find_date_column(df: pd.DataFrame):
     return None
 
 def safe_to_datetime(s, utc=True):
-    """安全的 pd.to_datetime 包装，返回 tz-aware (如果 utc=True) 或 naive datetime"""
+    """安全解析日期，兼容 YYYY-MM-DD 和 YYYY-MM-DD HH:MM"""
     try:
-        return pd.to_datetime(s, format='%Y-%m-%d %H:%M', utc=utc, errors='coerce')
+        dt = pd.to_datetime(s, errors='coerce', utc=utc)
+        return dt
     except Exception:
-        try:
-            return pd.to_datetime(s, utc=utc, errors='coerce')
-        except Exception:
-            # 最后退回到不带 utc 的解析（兼容极端输入）
-            return pd.to_datetime(s, errors='coerce')
+        return pd.Series([pd.NaT]*len(s))
 
 def clean_btc_df(df: pd.DataFrame):
-    """清洗 BTC 数据，确保有 datetime 列并做基本转换"""
     df = df.copy()
     if 'datetime' not in df.columns:
         raise ValueError("BTC 文件缺少 datetime 列")
     df['datetime'] = safe_to_datetime(df['datetime'], utc=True)
-    df = df.dropna(subset=['datetime'])
-    df = df.drop_duplicates(subset=['datetime'])
-    # 数值列转换
-    for col in ['open', 'high', 'low', 'close', 'volume']:
+    df = df.dropna(subset=['datetime']).drop_duplicates(subset=['datetime'])
+    for col in ['open','high','low','close','volume']:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors='coerce')
     return df.sort_values('datetime')
 
 def clean_merged_df(df: pd.DataFrame):
-    """清洗合并后的 df：datetime 标准化，数值列转换，节气向后填充，去重并排序"""
     df = df.copy()
-    # datetime UTC-aware
     df['datetime'] = safe_to_datetime(df['datetime'], utc=True)
     df = df.dropna(subset=['datetime'])
-    # 数值列
-    for col in ['open', 'high', 'low', 'close', 'volume']:
+    for col in ['open','high','low','close','volume']:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors='coerce')
-    # 节气向后填充
     if '节气' in df.columns:
         df['节气'] = df['节气'].ffill()
-    # 删除重复行（按 datetime）
-    df = df.drop_duplicates(subset=['datetime'])
-    df = df.sort_values('datetime')
+    df = df.drop_duplicates(subset=['datetime']).sort_values('datetime')
     return df
 
 def datetime_to_str(df: pd.DataFrame, fmt="%Y-%m-%d %H:%M"):
-    """
-    将 df 中的 datetime 列转换为字符串格式。
-    如果 datetime 带时区（tz-aware），strftime 会把时区信息考虑进去。
-    """
     df = df.copy()
     if 'datetime' in df.columns:
-        # 确保为 datetime 类型
-        try:
-            df['datetime'] = pd.to_datetime(df['datetime'], utc=True, errors='coerce')
-        except Exception:
-            df['datetime'] = pd.to_datetime(df['datetime'], errors='coerce')
-        # 对于存在 NaT 的行，保留为 NaN（写入 parquet 时为 null）
+        df['datetime'] = pd.to_datetime(df['datetime'], errors='coerce', utc=True)
         df['datetime'] = df['datetime'].dt.strftime(fmt)
     return df
 
 # -----------------------
-# 玄学 master 构建
+# 构建玄学 master
 # -----------------------
 def load_astro_master():
+    print("开始加载天体数据...")
     dfs = []
+    try:
+        files = os.listdir(ASTRO_DIR)
+    except Exception as e:
+        print("无法访问 ASTRO_DIR:", e)
+        return None
+
     for key, fname in ASTRO_FILES.items():
         path = os.path.join(ASTRO_DIR, fname)
         if not os.path.exists(path):
-            print(f"[warn] 玄学文件不存在: {path}")
+            print(f"[警告] 文件不存在: {path}")
             continue
         try:
             df = pd.read_parquet(path)
         except Exception as e:
-            print(f"[warn] 读取玄学文件失败: {path} -> {e}")
+            print(f"[警告] 读取失败 {fname}: {e}")
             continue
         date_col = find_date_column(df)
         if not date_col:
-            print(f"[error] 文件 {fname} 中未找到日期列，无法继续处理")
-            return None
+            print(f"[错误] 文件 {fname} 未找到日期列")
+            continue
         dt = safe_to_datetime(df[date_col], utc=True)
         df_vals = df.drop(columns=[date_col])
         df_vals['__datetime__'] = dt
         df_vals = df_vals.dropna(subset=['__datetime__'])
         if df_vals.empty:
+            print(f"[警告] 文件 {fname} 全部 NaT，跳过")
             continue
         df_vals = df_vals.set_index('__datetime__')
         dfs.append((key, df_vals))
 
     if not dfs:
-        print("[error] 未找到有效玄学文件")
+        print("[错误] 未找到有效天体文件")
         return None
 
-    # 先用第一个作为 base，再 join 其它，遇到冲突列做简单处理（优先保留 master 非空列）
     master = dfs[0][1].copy()
     for key, dfv in dfs[1:]:
         conflict_cols = [c for c in dfv.columns if c in master.columns]
-        if conflict_cols:
-            for c in conflict_cols:
-                if not master[c].isna().all():
-                    # master 有值则丢弃输入表的同名列，避免覆盖
-                    dfv = dfv.drop(columns=[c])
+        for c in conflict_cols:
+            if not master[c].isna().all():
+                dfv = dfv.drop(columns=[c])
         master = master.join(dfv, how='outer')
-
-    master = master.sort_index().reset_index()
-    master = master.rename(columns={'__datetime__': 'datetime'})
+    master = master.sort_index().reset_index().rename(columns={'__datetime__':'datetime'})
     master['datetime'] = pd.to_datetime(master['datetime'], utc=True)
-
-    # 统一节气列名（如果有多个带 '节气' 的列）
-    for c in list(master.columns):
-        if '节气' in c and c != '节气':
-            if '节气' not in master.columns:
-                master = master.rename(columns={c: '节气'})
-            else:
-                master = master.drop(columns=[c])
-
-    # 节气向后填充
     if '节气' in master.columns:
-        master = master.sort_values('datetime')
         master['节气'] = master['节气'].ffill()
-
+    print("天体 master 构建完成，形状:", master.shape)
     return master
 
 def merge_to_btc_df(btc_df: pd.DataFrame, astro_master: pd.DataFrame):
     btc_df = clean_btc_df(btc_df)
-    astro_master = astro_master.sort_values('datetime')
-    # 使用 merge_asof，direction='backward'：寻找 BTC 时间点最近且不晚于该时间的玄学行
-    merged = pd.merge_asof(btc_df, astro_master, on='datetime', direction='backward')
+    merged = pd.merge_asof(btc_df, astro_master.sort_values('datetime'), on='datetime', direction='backward')
     merged = clean_merged_df(merged)
     return merged
 
@@ -261,73 +202,31 @@ def merge_to_btc_df(btc_df: pd.DataFrame, astro_master: pd.DataFrame):
 # 主流程
 # -----------------------
 def merge_all(datetime_fmt="%Y-%m-%d %H:%M"):
-    print("开始合并 BTC 与玄学特征（输出到 data/merged/btc/btc_5m）...")
-    try:
-        astro_master = load_astro_master()
-        if astro_master is None:
-            print("[error] 无有效玄学 master，退出")
-            return
-    except Exception as e:
-        print("[error] 构建玄学 master 失败：", e)
-        traceback.print_exc()
+    create_sample_astro_data()
+    astro_master = load_astro_master()
+    if astro_master is None:
+        print("[错误] 无有效天体 master，退出")
         return
-
     if not os.path.exists(BTC_DIR):
-        print(f"[error] BTC 数据目录不存在: {BTC_DIR}")
+        print(f"[错误] BTC 数据目录不存在: {BTC_DIR}")
         return
 
-    items = sorted(os.listdir(BTC_DIR))
-    for item in items:
+    for item in sorted(os.listdir(BTC_DIR)):
         item_path = os.path.join(BTC_DIR, item)
-        # 年目录（按月）
         if os.path.isdir(item_path):
-            year = item
-            out_year_dir = os.path.join(MERGED_DIR, year)
-            os.makedirs(out_year_dir, exist_ok=True)
+            year_dir = os.path.join(MERGED_DIR, item)
+            os.makedirs(year_dir, exist_ok=True)
             month_files = sorted([f for f in os.listdir(item_path) if f.endswith('.parquet')])
-            if not month_files:
-                continue
-            print(f"[info] 处理年份目录（按月）: {year}, {len(month_files)} 个文件")
             for mf in month_files:
-                mf_path = os.path.join(item_path, mf)
-                try:
-                    btc_month = pd.read_parquet(mf_path)
-                except Exception as e:
-                    print(f"[warn] 读取 BTC 月文件失败: {mf_path} -> {e}")
-                    continue
-                try:
-                    merged = merge_to_btc_df(btc_month, astro_master)
-                    # 输出前转 datetime 为字符串
-                    merged_out = datetime_to_str(merged, fmt=datetime_fmt)
-                    out_path = os.path.join(out_year_dir, mf)
-                    merged_out.to_parquet(out_path, index=False)
-                    print(f"[ok] 已合并并保存: {mf} (rows={len(merged_out)})")
-                except Exception as e:
-                    print(f"[error] 合并月文件失败 {mf_path}: {e}")
-                    traceback.print_exc()
-            continue
-
-        # 单文件 parquet（按年或整文件）
-        if item.endswith('.parquet'):
-            fpath = os.path.join(BTC_DIR, item)
-            try:
-                btc_df = pd.read_parquet(fpath)
-            except Exception as e:
-                print(f"[warn] 读取 BTC 文件失败: {fpath} -> {e}")
-                continue
-            try:
-                merged = merge_to_btc_df(btc_df, astro_master)
-                # 输出前转 datetime 为字符串
+                btc_month = pd.read_parquet(os.path.join(item_path, mf))
+                merged = merge_to_btc_df(btc_month, astro_master)
                 merged_out = datetime_to_str(merged, fmt=datetime_fmt)
-                out_path = os.path.join(MERGED_DIR, item)
-                merged_out.to_parquet(out_path, index=False)
-                print(f"[ok] 已合并并保存: {item} (rows={len(merged_out)})")
-            except Exception as e:
-                print(f"[error] 合并文件失败 {fpath}: {e}")
-                traceback.print_exc()
-
-    print("全部合并完成。输出目录:", MERGED_DIR)
+                merged_out.to_parquet(os.path.join(year_dir, mf), index=False)
+        elif item.endswith('.parquet'):
+            btc_df = pd.read_parquet(item_path)
+            merged = merge_to_btc_df(btc_df, astro_master)
+            merged_out = datetime_to_str(merged, fmt=datetime_fmt)
+            merged_out.to_parquet(os.path.join(MERGED_DIR, item), index=False)
 
 if __name__ == "__main__":
-    # 默认时间格式为 年-月-日 时:分（无秒）
-    merge_all(datetime_fmt="%Y-%m-%d %H:%M")
+    merge_all()
