@@ -24,11 +24,11 @@ TIMEZONE_MAP = {"UTC0": "UTC", "UTC8": "Asia/Shanghai"}
 # ------------------ 配置 ------------------
 ROOT_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = ROOT_DIR / "data" / "merged" / "btc" / "btc_5m"
-OUT_DIR = ROOT_DIR / "results" / "backtest_5m"
+OUT_DIR = ROOT_DIR / "results" / "backtest_最终版"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 STAR_COL = "星宿"
-JIAN_XING_COL = "十二建星"  # 添加建星列支持
+JIAN_XING_COL = "建星"  # 添加建星列支持
 # 定义目标星宿及其参数
 TARGET_STARS = {
     "毕宿": {
@@ -91,52 +91,40 @@ def load_and_prepare_data(data_dir: Path) -> pd.DataFrame:
     """
     加载并准备数据，确保时间列正确解析为datetime类型
     """
-    # 查找所有Parquet文件
     parquet_files = sorted(data_dir.rglob("*.parquet"))
     if not parquet_files:
         raise FileNotFoundError(f"在 {data_dir} 未找到任何 parquet 文件，请检查路径或先运行合并脚本。")
-    
-    # 读取所有Parquet文件
-    dfs = []
-    for p in parquet_files:
-        try:
-            df_tmp = pd.read_parquet(p)
-            dfs.append(df_tmp)
-        except Exception as e:
-            print(f"[警告] 读取文件失败: {p} -> {e}")
-    
-    # 合并所有数据
+
+    dfs = [pd.read_parquet(p) for p in parquet_files]
     df = pd.concat(dfs, ignore_index=True)
     if df.empty:
         raise RuntimeError("合并后的 DataFrame 为空，无法回测。")
 
-    # 确保 datetime 列被正确解析为 datetime 类型
+    # 修复 datetime 解析：先判断类型
     if 'datetime' in df.columns:
-        df['datetime'] = pd.to_datetime(df['datetime'], unit='s')  # 假设是Unix时间戳
+        if np.issubdtype(df['datetime'].dtype, np.number):
+            df['datetime'] = pd.to_datetime(df['datetime'], unit='s')
+        else:
+            df['datetime'] = pd.to_datetime(df['datetime'])
     else:
         raise ValueError("数据中缺少 'datetime' 列")
 
-    # 创建 UTC 和 CN 时间列
+    # 本地化 UTC 并转换为上海时间
+    df['datetime'] = df['datetime'].dt.tz_localize('UTC')
     df['date_utc'] = df['datetime'].dt.date
     df['time_utc'] = df['datetime'].dt.time
-
-    # 设置时区转换
-    timezone = TIMEZONE_MAP.get("UTC8", "Asia/Shanghai")
-    df['datetime_cn'] = df['datetime'].dt.tz_convert(timezone)
+    df['datetime_cn'] = df['datetime'].dt.tz_convert('Asia/Shanghai')
     df['date_cn'] = df['datetime_cn'].dt.date
     df['time_cn'] = df['datetime_cn'].dt.time
 
-    # 根据配置的时间范围过滤数据
     if START_DATE is not None:
         start_date = pd.to_datetime(START_DATE).tz_localize('UTC')
         df = df[df['datetime'] >= start_date]
     if END_DATE is not None:
         end_date = pd.to_datetime(END_DATE).tz_localize('UTC')
         df = df[df['datetime'] <= end_date]
-    
-    # 再次验证过滤后的时间范围
-    print(f"时间范围: {df['datetime'].min()} 到 {df['datetime'].max()}")
 
+    print(f"时间范围: {df['datetime'].min()} 到 {df['datetime'].max()}")
     return df
 
 # 加载数据
@@ -161,7 +149,13 @@ for star_name, star_params in TARGET_STARS.items():
 
     # 为当前星宿创建带有时区信息的数据副本
     df_star = df.copy()
+    # 为当前星宿创建带有时区信息的数据副本
+
+    # tz_convert 前先本地化 UTC
+    df_star["datetime"] = df_star["datetime"].dt.tz_localize('UTC') if df_star["datetime"].dt.tz is None else df_star["datetime"]
     df_star["datetime_cn"] = df_star["datetime"].dt.tz_convert(star_timezone)
+    df_star = df_star.sort_values("datetime_cn").reset_index(drop=True)
+    df_star["date_cn"] = df_star["datetime_cn"].dt.floor("D")
     df_star = df_star.sort_values("datetime_cn").reset_index(drop=True)
     df_star["date_cn"] = df_star["datetime_cn"].dt.floor("D")
 
@@ -513,15 +507,12 @@ if len(all_trades) > 0:
     # 第一个滚动CAGR值出现在第365天之后，确保每一期都是完整滚动一年的年化收益
     if len(capital_df) >= 365:
         for i in range(365, len(capital_df)):
-            # 取过去365天作为滚动窗口（完整一年）
             start_capital = capital_df.iloc[i - 365]['capital']
             end_capital = capital_df.iloc[i]['capital']
-
-            # 计算CAGR (复合年增长率)，仅当起始资金大于0时有效
-            if start_capital > 0:
-                cagr = (end_capital / start_capital) ** (1.0 / 1) - 1  # 1年期年化收益率
-                rolling_cagr.append(cagr)
-                rolling_dates.append(capital_df.iloc[i]['date'])  # 记录该CAGR对应的结束日期
+        if start_capital > 0:  # 防止除以0
+            cagr = (end_capital / start_capital) ** (1.0 / 1) - 1
+            rolling_cagr.append(cagr)
+            rolling_dates.append(capital_df.iloc[i]['date'])
 
     # 绘制滚动年化收益曲线
     if rolling_cagr:

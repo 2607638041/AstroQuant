@@ -152,14 +152,26 @@ def get_ganzhi_for_date(d: date):
 # 月家九星
 # --------------------------
 def compute_month_star_by_ganzhi(d: date):
+    """
+    根据日期计算对应的月建星
+    参数:
+        d: date类型，表示要计算的日期
+    返回:
+        对应的月建星名称
+    """
+    # 获取日期对应的干支信息
     gj = get_ganzhi_for_date(d)
+    # 从干支信息中提取年支和月支
     year_zhi = gj.get("year_zhi", "")
     month_zhi = gj.get("month_zhi", "")
 
+    # 初始化起始编号为None
     start_num = None
+    # 如果年支存在且在支组映射中，获取对应的组别和起始编号
     if year_zhi and year_zhi in ZHI_TO_GROUP:
         grp = ZHI_TO_GROUP[year_zhi]
         start_num = GROUP_TO_START.get(grp)
+    # 如果起始编号仍未确定，则根据年份模3的值来确定起始编号
     if start_num is None:
         mod = d.year % 3
         if mod == 0:
@@ -169,12 +181,16 @@ def compute_month_star_by_ganzhi(d: date):
         else:
             start_num = GROUP_TO_START["辰戌丑未"]
 
+    # 如果月支存在且在月支序列中，获取其索引
     if month_zhi and month_zhi in LUNAR_MONTH_ZHI_SEQ:
         m_index = LUNAR_MONTH_ZHI_SEQ.index(month_zhi)
     else:
+        # 否则使用公历月份计算索引
         m_index = (d.month - 1) % 12
 
+    # 计算星位编号
     star_num = ((start_num - m_index - 1) % 9) + 1
+    # 返回对应的星位名称
     return NUM_TO_STAR[star_num]
 
 # --------------------------
