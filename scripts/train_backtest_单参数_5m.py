@@ -20,14 +20,14 @@ TIMEZONE_MAP = {"UTC0": "UTC","UTC8": "Asia/Shanghai"}
 # ------------------ 配置 ------------------
 ROOT_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = ROOT_DIR / "data" / "merged" / "btc" / "btc_5m"
-OUT_DIR = ROOT_DIR / "results" / "backtest_5m"
+OUT_DIR = ROOT_DIR / "results" / "backtest_单参数"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 TIMEZONE = "UTC8"   # 时区选择
 if TIMEZONE in TIMEZONE_MAP: # 如果TIMEZONE是简写形式，则转换为标准形式
     TIMEZONE = TIMEZONE_MAP[TIMEZONE]
 TRADE_DIRECTION = "多"      # 交易方向
-STAR_COL = "十二建星"        # 信号类型
+STAR_COL = "建星"        # 信号类型
 TARGET_STAR = "闭"          # 信号目标
 
 INITIAL_CAPITAL = 1000.0     # 初始资金（USDT）
