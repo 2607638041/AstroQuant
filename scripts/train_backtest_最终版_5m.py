@@ -19,7 +19,39 @@ from colorama import init, Fore, Style
 
 init(autoreset=True)  # 初始化colorama并启用自动重置
 warnings.filterwarnings("ignore")
-TIMEZONE_MAP = {"UTC0": "UTC", "UTC8": "Asia/Shanghai"}
+
+# 时区映射表
+TIMEZONE_MAP = \
+{
+    # 零偏移（UTC）
+    "UTC0": "UTC",
+    # 负偏移（西半球）
+    "UTC-1": "Etc/GMT+1",
+    "UTC-2": "Etc/GMT+2",
+    "UTC-3": "Etc/GMT+3",
+    "UTC-4": "Etc/GMT+4",
+    "UTC-5": "Etc/GMT+5",
+    "UTC-6": "Etc/GMT+6",
+    "UTC-7": "Etc/GMT+7",
+    "UTC-8": "Etc/GMT+8",
+    "UTC-9": "Etc/GMT+9",
+    "UTC-10": "Etc/GMT+10",
+    "UTC-11": "Etc/GMT+11",
+    "UTC-12": "Etc/GMT+12",
+    # 正偏移（东半球
+    "UTC1": "Etc/GMT-1",
+    "UTC2": "Etc/GMT-2",
+    "UTC3": "Etc/GMT-3",
+    "UTC4": "Etc/GMT-4",
+    "UTC5": "Etc/GMT-5",
+    "UTC6": "Etc/GMT-6",
+    "UTC7": "Etc/GMT-7",
+    "UTC8": "Etc/GMT-8",
+    "UTC9": "Etc/GMT-9",
+    "UTC10": "Etc/GMT-10",
+    "UTC11": "Etc/GMT-11",
+    "UTC12": "Etc/GMT-12",
+}
 
 # ------------------ 配置 ------------------
 ROOT_DIR = Path(__file__).resolve().parent.parent
@@ -62,11 +94,11 @@ TARGET_STARS = {
         "TIMEZONE": "UTC0"
     },
     # 添加建星相关配置
-    "闭": {
-        "PEAK_PERCENT": 1.0,
-        "TAKE_PROFIT_PERCENT": 0.082,
-        "STOP_LOSS_PERCENT": 0.116,
-        "TIMEZONE": "UTC8"
+    "除": {
+        "PEAK_PERCENT": 0.7,
+        "TAKE_PROFIT_PERCENT": 0.121,
+        "STOP_LOSS_PERCENT": 0.094,
+        "TIMEZONE": "UTC0"
     }
 }
 
@@ -161,7 +193,7 @@ for star_name, star_params in TARGET_STARS.items():
 
     # 判断是星宿还是建星
     target_col = STAR_COL if star_name in ["毕宿", "氐宿", "参宿", "尾宿", "轸宿"] else JIAN_XING_COL
-    
+
     star_mask = (df_star[target_col] == star_name)
     segment_starts = df_star.index[star_mask & (~star_mask.shift(1, fill_value=False))].tolist()
 
@@ -522,13 +554,13 @@ if len(all_trades) > 0:
         plt.xlabel('日期', fontsize=14, fontweight='bold')
         plt.ylabel('年化收益率', fontsize=14, fontweight='bold')
         plt.grid(True, alpha=0.3)
-        
+
         # 设置x轴日期格式，使用年度刻度避免标签过于密集
         plt.gca().xaxis.set_major_formatter(plt.matplotlib.dates.DateFormatter('%Y'))
         plt.gca().xaxis.set_major_locator(plt.matplotlib.dates.YearLocator())
         plt.xticks(rotation=0, fontsize=12)
         plt.yticks(fontsize=12)
-        
+
         # 添加0%参考线
         plt.axhline(y=0, color='r', linestyle='--', alpha=0.7)
 
@@ -542,10 +574,10 @@ if len(all_trades) > 0:
         ax.yaxis.set_major_locator(plt.matplotlib.ticker.MultipleLocator(0.5))
         # 格式化为百分比，保留两位小数
         ax.yaxis.set_major_formatter(plt.matplotlib.ticker.PercentFormatter(1.0, decimals=2))
-        
+
         # 添加图例
         plt.legend(['1年期CAGR'], loc='upper left', fontsize=12)
-        
+
         # 根据START_DATE和END_DATE设置x轴显示范围
         if START_DATE is not None:
             plt.xlim(left=pd.to_datetime(START_DATE))

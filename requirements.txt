@@ -1,12 +1,12 @@
 # requirements.txt
 # 依赖库清单
 
-ccxt
-pandas
-numpy
-matplotlib
-pytz
-colorama
-tqdm
-pyarrow
-skyfield
+ccxt        # 交易所接口库
+pandas      # 数据处理库
+numpy       # 数值计算库
+matplotlib  # 绘图库
+pytz        # 时区处理库
+colorama    # 颜色库
+tqdm       # 进度条库
+pyarrow    # 高性能数据处理库
+skyfield     # 星历计算库

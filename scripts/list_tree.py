@@ -1,15 +1,15 @@
 # scripts/list_tree.py
 import os
-import argparse
-from pathlib import Path
+import argparse  # 命令行参数解析
+from pathlib import Path    # Python 3.4+
 
 # 需要排除的目录/文件
-EXCLUDE_DIRS = {'.idea', 'venv', '__pycache__'}
-EXCLUDE_FILES = {'.DS_Store'}
+EXCLUDE_DIRS = {'.idea', 'venv', '__pycache__'}  # 排除IDEA、虚拟环境、Python缓存目录
+EXCLUDE_FILES = {'.DS_Store'}           # 排除Mac系统文件
 
-def build_tree(root: Path, max_depth: int = 3) -> str:
+def build_tree(root: Path, max_depth: int = 3) -> str:  # 定义函数
     """构建目录树文本"""
-    lines = []
+    lines = []  # 目录树文本行
 
     def _walk(path: Path, depth: int):
         if depth > max_depth:
@@ -27,7 +27,7 @@ def build_tree(root: Path, max_depth: int = 3) -> str:
                 _walk(entry, depth + 1)
 
     _walk(root, 0)
-    return '\n'.join(lines)
+    return '\n'.join(lines)  # 目录树文本
 
 
 def main():
@@ -47,5 +47,5 @@ def main():
     print(tree_text)
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # 脚本运行入口
     main()
