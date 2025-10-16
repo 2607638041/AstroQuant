@@ -108,11 +108,8 @@ INITIAL_CAPITAL = 1000.0  # 初始资金（USDT）
 START_DATE = None     # 开始日期，格式为 "2020-01-01"，设为 None 表示不限制开始时间
 END_DATE = None       # 结束日期，格式为 "2023-12-31"，设为 None 表示不限制结束时间
 
-# 手续费、资金费率和滑点配置
-TAKER_FEE = 0.0005  # 永续合约吃单手续费（0.05%）
-MAKER_FEE = 0.0002  # 永续合约挂单手续费（0.02%）
-FUNDING_RATE = 0.0001  # 日资金费率（0.03%）
-SLIPPAGE = 0.0005  # 滑点（0.05%）
+# 交易成本
+TAKER_FEE, MAKER_FEE, FUNDING_RATE, SLIPPAGE = 0.0005, 0.0003, 0.0002, 0.0005
 
 # 解决中文乱码显示问题
 plt.rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei', 'Arial Unicode MS']
