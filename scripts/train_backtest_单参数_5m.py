@@ -15,7 +15,8 @@ warnings.filterwarnings("ignore")
 # 时区映射
 TIMEZONE_MAP = {
     "UTC+8": "Etc/GMT-8",
-    **{f"UTC-{i}": f"Etc/GMT+{i}" for i in range(0, 13)},   # UTC 1~12
+    "UTC0": "UTC",
+    **{f"UTC-{i}": f"Etc/GMT+{i}" for i in range(1, 13)},   # UTC 1~12
     **{f"UTC {i}": f"Etc/GMT-{i}" for i in range(11, 12)}   # UTC 11~12
 }
 
