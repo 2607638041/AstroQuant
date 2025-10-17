@@ -14,9 +14,8 @@ warnings.filterwarnings("ignore")
 
 # 时区映射
 TIMEZONE_MAP = {
-    "UTC0": "UTC",           # 零时区
-    "UTC+8": "Etc/GMT-8",    # 东八区
-    **{f"UTC-{i}": f"Etc/GMT+{i}" for i in range(1, 13)},   # UTC 1~12
+    "UTC+8": "Etc/GMT-8",
+    **{f"UTC-{i}": f"Etc/GMT+{i}" for i in range(0, 13)},   # UTC 1~12
     **{f"UTC {i}": f"Etc/GMT-{i}" for i in range(11, 12)}   # UTC 11~12
 }
 
@@ -26,7 +25,7 @@ OUT_DIR = ROOT_DIR / "results" / "backtest_多时区"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 # 策略参数
-TIMEZONE = "UTC+8"                           # None=全时区，"UTC8"=单时区
+TIMEZONE = None                           # None=全时区，"UTC8"=单时区
 TRADE_DIRECTION = "多"                    # "多"/"空"
 STAR_COL, TARGET_STAR = "星宿", "氐宿"     # 信号列名，信号参数
 

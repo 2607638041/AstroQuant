@@ -17,9 +17,8 @@ warnings.filterwarnings("ignore")
 
 # ==================== 配置参数 ====================
 TIMEZONE_MAP = {
-    "UTC0": "UTC",
     "UTC+8": "Etc/GMT-8",
-    **{f"UTC-{i}": f"Etc/GMT+{i}" for i in range(1, 13)},
+    **{f"UTC-{i}": f"Etc/GMT+{i}" for i in range(0, 13)},
     **{f"UTC{i}": f"Etc/GMT-{i}" for i in range(11, 12)}
 }
 
