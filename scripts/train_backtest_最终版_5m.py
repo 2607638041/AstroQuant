@@ -6,6 +6,7 @@
 - 改进时区处理和数据结构
 - 完整的资金曲线和统计指标计算
 - 非持仓状态最高资金作为杠杆基准
+- 改进时间序列化处理
 """
 
 import warnings
@@ -82,7 +83,7 @@ TARGET_STARS = {
         "STOP_LOSS_PERCENT": 0.1,
         "TIMEZONE": "UTC0"
     },
-        "柳宿": {
+    "柳宿": {
         "PEAK_PERCENT": 1.34,
         "TAKE_PROFIT_PERCENT": 0.1,
         "STOP_LOSS_PERCENT": 0.1,
@@ -100,7 +101,8 @@ TARGET_STARS = {
         "TAKE_PROFIT_PERCENT": 0.1,
         "STOP_LOSS_PERCENT": 0.1,
         "TIMEZONE": "UTC+8"
-    },"危": {
+    },
+    "危": {
         "PEAK_PERCENT": 1.19,
         "TAKE_PROFIT_PERCENT": 0.1,
         "STOP_LOSS_PERCENT": 0.1,
@@ -109,7 +111,7 @@ TARGET_STARS = {
 }
 
 INITIAL_CAPITAL = 1000.0               # 初始资金（USDT）
-START_DATE = "2018-04-01"                      # 开始日期，格式为 "2020-01-01"，设为 None 表示不限制开始时间
+START_DATE = "2018-04-01"              # 开始日期，格式为 "2020-01-01"，设为 None 表示不限制开始时间
 
 TAKER_FEE, MAKER_FEE, FUNDING_RATE, SLIPPAGE = 0.0005, 0.0003, 0.0002, 0.0005
 ENABLE_CHARTS = True           # 是否生成图表
@@ -359,11 +361,13 @@ def run_backtest(df_raw):
 
         price_change = (close_price - open_price) / open_price
 
+        # 【改进点】使用 pd.Timestamp() 转换处理 numpy.datetime64 对象
         all_trades.append({
+            "时区": params["TIMEZONE"],
             "信号": star_name,
             "信号类型": "建星" if signal["target_col"] == JIAN_XING_COL else "星宿",
-            "开仓时间": open_time,
-            "平仓时间": close_time,
+            "开仓时间": pd.Timestamp(open_time).strftime('%Y-%m-%d %H:%M:%S'),
+            "平仓时间": pd.Timestamp(close_time).strftime('%Y-%m-%d %H:%M:%S'),
             "开仓价": round(open_price, 4),
             "平仓价": round(close_price, 4),
             "开仓前资金（U）": round(current_capital, 2),
@@ -488,9 +492,9 @@ if __name__ == '__main__':
             if all_trades:
                 start_time_val = all_trades[0]["开仓时间"]
                 end_time_val = all_trades[-1]["开仓时间"]
-                # 处理 numpy.datetime64 对象
-                stats['开始时间'] = pd.Timestamp(start_time_val).date()
-                stats['结束时间'] = pd.Timestamp(end_time_val).date()
+                # 【改进点】直接使用字符串格式的时间
+                stats['开始时间'] = start_time_val[:10]
+                stats['结束时间'] = end_time_val[:10]
             else:
                 stats['开始时间'] = None
                 stats['结束时间'] = None
