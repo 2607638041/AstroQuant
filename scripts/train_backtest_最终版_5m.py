@@ -6,7 +6,7 @@
 - 改进时区处理和数据结构
 - 完整的资金曲线和统计指标计算
 - 非持仓状态最高资金作为杠杆基准
-- 改进时间序列化处理
+- 配置区预分类信号列，后续代码自动使用
 """
 
 import warnings
@@ -35,91 +35,106 @@ DATA_DIR = ROOT_DIR / "data" / "merged" / "btc" / "btc_5m"
 OUT_DIR = ROOT_DIR / "results" / "backtest_最终版"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
-# 信号列名
-STAR_COL = "星宿"                      # 星宿信号列
-JIAN_XING_COL = "建星"                 # 建星信号列
-
-# 定义目标星宿及其参数
-TARGET_STARS = {
-    "毕宿": {
-        "PEAK_PERCENT": 0.83,
-        "TAKE_PROFIT_PERCENT": 0.1,
-        "STOP_LOSS_PERCENT": 0.1,
-        "TIMEZONE": "UTC+8"
+# ==================== 信号分类配置（在此添加新列和信号）====================
+SIGNAL_CLASSIFICATION = {
+    "星宿": {
+        "毕宿": {
+            "PEAK_PERCENT": 0.83,
+            "TAKE_PROFIT_PERCENT": 0.1,
+            "STOP_LOSS_PERCENT": 0.1,
+            "TIMEZONE": "UTC+8"
+        },
+        "箕宿": {
+            "PEAK_PERCENT": 0.91,
+            "TAKE_PROFIT_PERCENT": 0.1,
+            "STOP_LOSS_PERCENT": 0.1,
+            "TIMEZONE": "UTC-1"
+        },
+        "氐宿": {
+            "PEAK_PERCENT": 1.82,
+            "TAKE_PROFIT_PERCENT": 0.1,
+            "STOP_LOSS_PERCENT": 0.1,
+            "TIMEZONE": "UTC+11"
+        },
+        "参宿": {
+            "PEAK_PERCENT": 0.98,
+            "TAKE_PROFIT_PERCENT": 0.1,
+            "STOP_LOSS_PERCENT": 0.1,
+            "TIMEZONE": "UTC-5"
+        },
+        "角宿": {
+            "PEAK_PERCENT": 1.24,
+            "TAKE_PROFIT_PERCENT": 0.1,
+            "STOP_LOSS_PERCENT": 0.1,
+            "TIMEZONE": "UTC-1"
+        },
+        "尾宿": {
+            "PEAK_PERCENT": 0.74,
+            "TAKE_PROFIT_PERCENT": 0.1,
+            "STOP_LOSS_PERCENT": 0.1,
+            "TIMEZONE": "UTC0"
+        },
+        "轸宿": {
+            "PEAK_PERCENT": 1.47,
+            "TAKE_PROFIT_PERCENT": 0.1,
+            "STOP_LOSS_PERCENT": 0.1,
+            "TIMEZONE": "UTC0"
+        },
+        "柳宿": {
+            "PEAK_PERCENT": 1.34,
+            "TAKE_PROFIT_PERCENT": 0.1,
+            "STOP_LOSS_PERCENT": 0.1,
+            "TIMEZONE": "UTC-8"
+        },
+        "觜宿": {
+            "PEAK_PERCENT": 0.96,
+            "TAKE_PROFIT_PERCENT": 0.1,
+            "STOP_LOSS_PERCENT": 0.1,
+            "TIMEZONE": "UTC-10"
+        },
     },
-    "箕宿": {
-        "PEAK_PERCENT": 0.91,
-        "TAKE_PROFIT_PERCENT": 0.1,
-        "STOP_LOSS_PERCENT": 0.1,
-        "TIMEZONE": "UTC-1"
-    },
-    "氐宿": {
-        "PEAK_PERCENT": 1.82,
-        "TAKE_PROFIT_PERCENT": 0.1,
-        "STOP_LOSS_PERCENT": 0.1,
-        "TIMEZONE": "UTC+11"
-    },
-    "参宿": {
-        "PEAK_PERCENT": 0.98,
-        "TAKE_PROFIT_PERCENT": 0.1,
-        "STOP_LOSS_PERCENT": 0.1,
-        "TIMEZONE": "UTC-5"
-    },
-    "角宿": {
-        "PEAK_PERCENT": 1.24,
-        "TAKE_PROFIT_PERCENT": 0.1,
-        "STOP_LOSS_PERCENT": 0.1,
-        "TIMEZONE": "UTC-1"
-    },
-    "尾宿": {
-        "PEAK_PERCENT": 0.74,
-        "TAKE_PROFIT_PERCENT": 0.1,
-        "STOP_LOSS_PERCENT": 0.1,
-        "TIMEZONE": "UTC0"
-    },
-    "轸宿": {
-        "PEAK_PERCENT": 1.47,
-        "TAKE_PROFIT_PERCENT": 0.1,
-        "STOP_LOSS_PERCENT": 0.1,
-        "TIMEZONE": "UTC0"
-    },
-    "柳宿": {
-        "PEAK_PERCENT": 1.34,
-        "TAKE_PROFIT_PERCENT": 0.1,
-        "STOP_LOSS_PERCENT": 0.1,
-        "TIMEZONE": "UTC-8"
-    },
-    "觜宿": {
-        "PEAK_PERCENT": 0.96,
-        "TAKE_PROFIT_PERCENT": 0.1,
-        "STOP_LOSS_PERCENT": 0.1,
-        "TIMEZONE": "UTC-10"
-    },
-    # 添加建星相关配置
-    "除": {
-        "PEAK_PERCENT": 1.05,
-        "TAKE_PROFIT_PERCENT": 0.1,
-        "STOP_LOSS_PERCENT": 0.1,
-        "TIMEZONE": "UTC+8"
-    },
-    "危": {
-        "PEAK_PERCENT": 1.19,
-        "TAKE_PROFIT_PERCENT": 0.1,
-        "STOP_LOSS_PERCENT": 0.1,
-        "TIMEZONE": "UTC-12"
+    "建星": {
+        "除": {
+            "PEAK_PERCENT": 1.05,
+            "TAKE_PROFIT_PERCENT": 0.1,
+            "STOP_LOSS_PERCENT": 0.1,
+            "TIMEZONE": "UTC+8"
+        },
+        "危": {
+            "PEAK_PERCENT": 1.19,
+            "TAKE_PROFIT_PERCENT": 0.1,
+            "STOP_LOSS_PERCENT": 0.1,
+            "TIMEZONE": "UTC-12"
+        },
     }
 }
 
+# 扁平化为便于使用的格式：{星宿名: (列名, 参数)}
+def build_target_stars(signal_classification):
+    """从分类配置构建目标星宿字典"""
+    result = {}
+    for col_name, signals_dict in signal_classification.items():
+        for star_name, params in signals_dict.items():
+            result[star_name] = {
+                **params,
+                "_column": col_name,
+                "_signal_type": "建星" if col_name == "建星" else "星宿"
+            }
+    return result
+
+TARGET_STARS = build_target_stars(SIGNAL_CLASSIFICATION)
+
 INITIAL_CAPITAL = 1000.0               # 初始资金（USDT）
-START_DATE = "2018-04-01"              # 开始日期，格式为 "2020-01-01"，设为 None 表示不限制开始时间
+START_DATE = "2018-04-01"              # 开始日期
 
 TAKER_FEE, MAKER_FEE, FUNDING_RATE, SLIPPAGE = 0.0005, 0.0003, 0.0002, 0.0005
-ENABLE_CHARTS = True           # 是否生成图表
+ENABLE_CHARTS = True
 
 plt.rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei', 'Arial Unicode MS']
 plt.rcParams['axes.unicode_minus'] = False
 
 # ==================== 工具函数 ====================
+
 def format_time(seconds):
     """格式化时间显示"""
     if seconds < 60:
@@ -139,11 +154,9 @@ def preprocess_star_data(df_raw, star_name, star_params):
     df = df_raw.copy()
     tz_str = TIMEZONE_MAP[star_params["TIMEZONE"]]
 
-    # 确保 UTC 时区
     if df["datetime"].dt.tz is None:
         df["datetime"] = df["datetime"].dt.tz_localize('UTC')
 
-    # 转换到目标时区
     df["datetime_tz"] = df["datetime"].dt.tz_convert(tz_str)
     df = df.sort_values("datetime_tz").reset_index(drop=True)
     df["date_tz"] = df["datetime_tz"].dt.floor("D")
@@ -178,27 +191,22 @@ def calculate_summary_stats(trades, full_curve, all_dates, initial_capital):
             "最大回撤": "0.00%", "最大回撤时长": 0, "总交易次数": 0
         }
 
-    # 基础收益指标
     final_capital = full_curve[-1]
     total_return = (final_capital - initial_capital) / initial_capital
 
-    # 修复：正确计算日期差
     date_diff = all_dates[-1] - all_dates[0]
     if isinstance(date_diff, np.timedelta64):
         days = int(date_diff / np.timedelta64(1, 'D')) + 1
     else:
-        # 如果是 Python 的 timedelta 对象
         days = date_diff.days + 1
 
     years = days / 365.0
     annual_return = -1.0 if final_capital <= 0 else (final_capital / initial_capital) ** (1/years) - 1.0
 
-    # 夏普比率
     pnl_arr = np.array([t["收益（U）"] for t in trades])
     returns = pnl_arr / initial_capital
     sharpe = np.mean(returns) / np.std(returns) * np.sqrt(len(returns)) if len(returns) > 1 and np.std(returns) > 0 else 0
 
-    # 胜率和盈亏比
     wins = np.sum(pnl_arr > 0)
     win_rate = wins / len(pnl_arr)
 
@@ -206,13 +214,11 @@ def calculate_summary_stats(trades, full_curve, all_dates, initial_capital):
     loss_trades = pnl_arr[pnl_arr < 0]
     pl_ratio = np.mean(win_trades) / abs(np.mean(loss_trades)) if len(win_trades) > 0 and len(loss_trades) > 0 else 0
 
-    # 最大回撤
     equity = np.array(full_curve)
     cummax = np.maximum.accumulate(equity)
     drawdown = (cummax - equity) / np.where(cummax == 0, 1, cummax)
     max_dd = float(np.max(drawdown))
 
-    # 最大回撤时长
     peak_indices = np.where(equity == cummax)[0]
     max_dd_days = 0
     for i in peak_indices:
@@ -220,7 +226,6 @@ def calculate_summary_stats(trades, full_curve, all_dates, initial_capital):
             recovery_idx = np.where(equity[i+1:] >= equity[i])[0]
             if len(recovery_idx) > 0:
                 recovery_idx = recovery_idx[0] + i + 1
-                # 修复：正确处理时间差
                 dd_duration_delta = all_dates[recovery_idx] - all_dates[i]
                 if isinstance(dd_duration_delta, np.timedelta64):
                     dd_duration = int(dd_duration_delta / np.timedelta64(1, 'D'))
@@ -246,22 +251,16 @@ def calculate_summary_stats(trades, full_curve, all_dates, initial_capital):
 def run_backtest(df_raw):
     """执行完整回测逻辑"""
     all_trades = []
-    all_dates_set = set()
-    processed_dates_by_star = {star: set() for star in TARGET_STARS}
-
-    # 非持仓最高资金追踪
     max_non_holding_capital = INITIAL_CAPITAL
     current_capital = INITIAL_CAPITAL
 
-    # 收集所有信号，按时间排序
     all_signals = []
 
     for star_name, star_params in TARGET_STARS.items():
-        df_star = preprocess_star_data(df_raw, star_name, star_params)
-        tz_str = TIMEZONE_MAP[star_params["TIMEZONE"]]
+        target_col = star_params["_column"]
+        signal_type = star_params["_signal_type"]
 
-        # 判断目标列
-        target_col = STAR_COL if star_name in ["毕宿", "氐宿", "参宿", "尾宿", "轸宿"] else JIAN_XING_COL
+        df_star = preprocess_star_data(df_raw, star_name, star_params)
 
         # 找信号起点（向量化）
         star_mask = (df_star[target_col] == star_name).values
@@ -275,15 +274,16 @@ def run_backtest(df_raw):
                 "start_date": start_date,
                 "params": star_params,
                 "df": df_star,
-                "target_col": target_col
+                "target_col": target_col,
+                "signal_type": signal_type
             })
 
     # 按日期排序
     all_signals.sort(key=lambda x: x["start_date"])
 
-    # 按时间顺序执行交易
     liquidated = False
     liquidation_date = None
+    processed_dates_by_star = {star: set() for star in TARGET_STARS}
 
     for signal in all_signals:
         if liquidated:
@@ -294,17 +294,16 @@ def run_backtest(df_raw):
         start_date = signal["start_date"]
         params = signal["params"]
         df_star = signal["df"]
+        target_col = signal["target_col"]
+        signal_type = signal["signal_type"]
 
-        # 检查该星宿该日期是否已交易
         if start_date in processed_dates_by_star[star_name]:
             continue
 
-        # 获取当日所有K线
         day_data = df_star[df_star["date_tz"] == start_date]
         if day_data.empty:
             continue
 
-        # NumPy 数组化加速访问
         dates = day_data["date_tz"].values
         datetimes = day_data["datetime_tz"].values
         opens = day_data["open"].values.astype(float)
@@ -312,15 +311,12 @@ def run_backtest(df_raw):
         highs = day_data["high"].values.astype(float)
         lows = day_data["low"].values.astype(float)
 
-        # 开仓
         open_price = opens[0]
         open_time = datetimes[0]
 
-        # 计算止盈止损
         tp_price = open_price * (1 + params["TAKE_PROFIT_PERCENT"])
         sl_price = open_price * (1 - params["STOP_LOSS_PERCENT"])
 
-        # 检查触发
         exit_type = "正常平仓"
         exit_idx = len(highs) - 1
 
@@ -334,26 +330,21 @@ def run_backtest(df_raw):
         close_price = closes[exit_idx]
         close_time = datetimes[exit_idx]
 
-        # 滑点处理
         open_price_slip = open_price * (1 + SLIPPAGE)
         close_price_slip = close_price * (1 - SLIPPAGE)
 
-        # 使用非持仓状态最高资金作为杠杆基准
         trade_size = max_non_holding_capital * params["PEAK_PERCENT"]
         units = trade_size / open_price_slip
 
-        # 费用计算
         open_fee = trade_size * TAKER_FEE
         funding_fee = trade_size * FUNDING_RATE
         close_value = units * close_price_slip
         close_fee = close_value * TAKER_FEE
         total_fees = open_fee + funding_fee + close_fee
 
-        # 收益计算（多头）
         pnl = units * (close_price_slip - open_price_slip) - total_fees
         new_capital = current_capital + pnl
 
-        # 检查爆仓
         if new_capital <= 0:
             new_capital = 0.0
             liquidated = True
@@ -361,11 +352,10 @@ def run_backtest(df_raw):
 
         price_change = (close_price - open_price) / open_price
 
-        # 【改进点】使用 pd.Timestamp() 转换处理 numpy.datetime64 对象
         all_trades.append({
             "时区": params["TIMEZONE"],
             "信号": star_name,
-            "信号类型": "建星" if signal["target_col"] == JIAN_XING_COL else "星宿",
+            "信号类型": signal_type,
             "开仓时间": pd.Timestamp(open_time).strftime('%Y-%m-%d %H:%M:%S'),
             "平仓时间": pd.Timestamp(close_time).strftime('%Y-%m-%d %H:%M:%S'),
             "开仓价": round(open_price, 4),
@@ -380,11 +370,11 @@ def run_backtest(df_raw):
             "平仓类型": exit_type
         })
 
-        # 更新非持仓最高资金和当前资金
         max_non_holding_capital = max(max_non_holding_capital, new_capital)
         current_capital = new_capital
+        processed_dates_by_star[star_name].add(start_date)
 
-    return all_trades, all_dates_set, liquidated, liquidation_date
+    return all_trades, liquidated, liquidation_date
 
 
 def save_results_csv(trades_df):
@@ -399,7 +389,6 @@ def save_charts(all_dates, full_curve):
     if not ENABLE_CHARTS:
         return
 
-    # 资金曲线图
     plt.figure(figsize=(15, 8))
     plt.plot(all_dates, full_curve, linewidth=2, color='#1f77b4')
     plt.title('回测资金曲线 - 信号交易策略', fontsize=16)
@@ -470,16 +459,14 @@ if __name__ == '__main__':
 
         # 执行回测
         print(f"{Fore.CYAN}执行回测...{Style.RESET_ALL}")
-        all_trades, all_dates_set, liquidated, liquidation_date = run_backtest(df)
+        all_trades, liquidated, liquidation_date = run_backtest(df)
 
         if not all_trades:
             print(Fore.RED + "无有效交易记录" + Style.RESET_ALL)
         else:
-            # 保存交易明细
             trades_df = pd.DataFrame(all_trades)
             save_results_csv(trades_df)
 
-            # 构建完整资金曲线
             all_dates = np.array(sorted(df["datetime"].dt.date.unique()))
             trade_dict = {
                 pd.to_datetime(t["开仓时间"]).date(): t["平仓后资金（U）"]
@@ -487,22 +474,14 @@ if __name__ == '__main__':
             }
             full_curve = build_full_capital_curve(all_dates, trade_dict, INITIAL_CAPITAL, liquidated, liquidation_date)
 
-            # 计算统计指标
             stats = calculate_summary_stats(all_trades, full_curve, all_dates, INITIAL_CAPITAL)
             if all_trades:
                 start_time_val = all_trades[0]["开仓时间"]
                 end_time_val = all_trades[-1]["开仓时间"]
-                # 【改进点】直接使用字符串格式的时间
                 stats['开始时间'] = start_time_val[:10]
                 stats['结束时间'] = end_time_val[:10]
-            else:
-                stats['开始时间'] = None
-                stats['结束时间'] = None
 
-            # 显示结果
             print_results_summary(stats)
-
-            # 保存图表
             save_charts(all_dates, full_curve)
 
             elapsed = time.time() - start_time

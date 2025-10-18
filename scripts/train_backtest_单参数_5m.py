@@ -26,13 +26,13 @@ OUT_DIR = ROOT_DIR / "results" / "backtest_多时区"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 # 策略参数
-TIMEZONE = None                           # None=全时区，"UTC8"=单时区
+TIMEZONE = "UTC0"                           # None=全时区，"UTC+8"=单时区
 TRADE_DIRECTION = "多"                    # "多"/"空"
-STAR_COL, TARGET_STAR = "星宿", "氐宿"     # 信号列名，信号参数
+STAR_COL, TARGET_STAR = "星宿", "轸宿"     # 信号列名，信号参数
 
 # 资金管理
 INITIAL_CAPITAL = 1000.0        # 初始资金
-PEAK_PERCENT = 1                # 仓位比例（>1为杠杆）
+PEAK_PERCENT = 1.5                # 仓位比例（>1为杠杆）
 TAKE_PROFIT_PERCENT = 1         # 止盈百分比（1 表示 100%）
 STOP_LOSS_PERCENT = 1           # 止损百分比（1 表示 100%）
 START_DATE = None               # 开始日期，格式为 "2020-01-01"，设为 None 表示不限制开始时间

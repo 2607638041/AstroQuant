@@ -30,15 +30,15 @@ OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 
 # 策略参数
-TIMEZONE = None                          # None=全时区，"UTC8"=单时区
-TRADE_DIRECTION = "多"                    # "多"/"空"
-STAR_COL = "建星"                      # 信号列名
+TIMEZONE = None                          # None=全时区，"UTC+8"=单时区
+TRADE_DIRECTION = "多"                   # "多"/"空"
+STAR_COL = "星宿"                         # 信号列名
 
 # 资金管理
-INITIAL_CAPITAL = 1000.0        # 初始资金
-PEAK_PERCENT = 1                # 仓位比例（>1为杠杆）
-TAKE_PROFIT_PERCENT = 1         # 止盈百分比（1 表示 100%）
-STOP_LOSS_PERCENT = 1           # 止损百分比（1 表示 100%）
+INITIAL_CAPITAL = 1000.0                # 初始资金
+PEAK_PERCENT = 1                        # 仓位比例（>1为杠杆）
+TAKE_PROFIT_PERCENT = 1                 # 止盈百分比（1 表示 100%）
+STOP_LOSS_PERCENT = 1                   # 止损百分比（1 表示 100%）
 START_DATE = "2018-04-01"               # 开始日期，格式为 "2020-01-01"，设为 None 表示不限制开始时间
 
 # 交易成本
