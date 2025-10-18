@@ -45,6 +45,55 @@ plt.rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei', 'Arial Unicode M
 plt.rcParams['axes.unicode_minus'] = False
 
 
+def print_single_timezone_result(summary, trades_df, all_dates, full_curve):
+    """单时区详细统计模式 - 表格形式"""
+    if trades_df.empty:
+        print(Fore.YELLOW + "未生成交易" + Style.RESET_ALL)
+        return
+
+    final_capital = full_curve[-1]
+    start_date = all_dates[0].strftime("%Y-%m-%d")
+    end_date = all_dates[-1].strftime("%Y-%m-%d")
+
+    total_return = (final_capital - INITIAL_CAPITAL) / INITIAL_CAPITAL * 100 if INITIAL_CAPITAL != 0 else 0
+
+    # 构建详细统计表
+    print(Fore.CYAN + "=" * 50)
+    print(f"          {TARGET_STAR}回测结果统计")
+    print("=" * 50 + Style.RESET_ALL)
+
+    print(Fore.CYAN + f"开始时间:     {start_date}" + Style.RESET_ALL)
+    print(Fore.CYAN + f"结束时间:     {end_date}" + Style.RESET_ALL)
+    print(Fore.YELLOW + f"初始资金:     {INITIAL_CAPITAL:>15,.2f} U" + Style.RESET_ALL)
+    print(Fore.YELLOW + f"最终资金:     {final_capital:>15,.2f} U" + Style.RESET_ALL)
+    print(Fore.GREEN + f"累计收益率:   {total_return:>15.2f}%" + Style.RESET_ALL)
+    print()
+    print(Fore.GREEN + f"年化收益率:   {summary['年化收益率']:>15.2f}%" + Style.RESET_ALL)
+    print(Fore.GREEN + f"夏普比率:     {summary['夏普比率']:>15.2f}" + Style.RESET_ALL)
+    print(Fore.CYAN + f"覆盖年数:     {summary['覆盖年数']:>15.2f}" + Style.RESET_ALL)
+    print(Fore.RED + f"最大回撤:     {summary['最大回撤']:>15.2f}%" + Style.RESET_ALL)
+    print(Fore.RED + f"最大回撤时长: {summary['最大回撤时长']:>15} 天" + Style.RESET_ALL)
+    print()
+    print(Fore.CYAN + f"总交易次数:   {summary['交易次数']:>15}" + Style.RESET_ALL)
+    print(Fore.GREEN + f"盈利次数:     {summary['盈利次数']:>15}" + Style.RESET_ALL)
+    print(Fore.RED + f"亏损次数:     {summary['亏损次数']:>15}" + Style.RESET_ALL)
+    print(Fore.GREEN + f"胜率:         {summary['胜率']:>15.2f}%" + Style.RESET_ALL)
+    print(Fore.GREEN + f"盈亏比:       {summary['盈亏比']:>15.2f}" + Style.RESET_ALL)
+
+    print(Fore.CYAN + "=" * 50 + Style.RESET_ALL)
+
+
+def print_multi_timezone_progress(current, total):
+    """多时区进度条模式 - 动态更新"""
+    percent = current / total
+    bar_length = 40
+    filled = int(bar_length * percent)
+    bar = '█' * filled + '░' * (bar_length - filled)
+
+    # 使用 \r 实现动态覆盖
+    print(f"\r处理进度: [{bar}] {current}/{total}", end='', flush=True)
+
+
 def calculate_slippage_price(price, is_long, is_open):
     """计算含滑点的成交价"""
     factor = SLIPPAGE if (is_long == is_open) else -SLIPPAGE
@@ -81,7 +130,6 @@ def run_backtest(df_raw, tz_name, tz_str):
     # 识别信号
     star_mask = (df[STAR_COL] == TARGET_STAR)
     segment_starts = df.index[star_mask & (~star_mask.shift(1, fill_value=False))].tolist()
-    print(Fore.CYAN + f"  [{tz_name}] 信号数: {len(segment_starts)}" + Style.RESET_ALL)
 
     # 初始化
     processed_dates = set()
@@ -287,8 +335,6 @@ def save_results(tz_name, trades_df, all_dates, full_curve):
 
 # ==================== 主程序 ====================
 if __name__ == "__main__":
-    print(Fore.YELLOW + "="*50 + "\n         多时区回测系统\n" + "="*50 + Style.RESET_ALL)
-
     # 加载数据
     parquet_files = sorted(DATA_DIR.rglob("*.parquet"))
     if not parquet_files:
@@ -299,29 +345,40 @@ if __name__ == "__main__":
 
     # 确定时区
     timezones = list(TIMEZONE_MAP.keys()) if TIMEZONE is None else [TIMEZONE]
-    print(Fore.GREEN + f"测试时区数: {len(timezones)}\n" + Style.RESET_ALL)
+    is_multi_tz = (TIMEZONE is None)
+
+    if is_multi_tz:
+        print(Fore.GREEN + f"测试时区数: {len(timezones)}\n" + Style.RESET_ALL)
 
     all_summaries = []
+    total_tz = len(timezones)
 
     # 执行回测
-    for tz_name in timezones:
-        print(f"{Fore.BLUE}{'='*50}\n{tz_name}{Style.RESET_ALL}")
-
+    for idx, tz_name in enumerate(timezones, 1):
         try:
             summary, trades_df, all_dates, full_curve = run_backtest(df, tz_name, TIMEZONE_MAP[tz_name])
             all_summaries.append(summary)
 
-            save_results(tz_name, trades_df, all_dates, full_curve)
-            if summary['是否爆仓']:
-                print(Fore.RED + "  爆仓" + Style.RESET_ALL)
+            if is_multi_tz:
+                # 多时区：进度条模式
+                print_multi_timezone_progress(idx, total_tz)
             else:
-                print(f"  收益: {summary['累计收益率']:.2f}% | 年化: {summary['年化收益率']:.2f}% | "
-                      f"交易: {summary['交易次数']} | 胜率: {summary['胜率']:.2f}%\n")
-        except Exception as e:
-            print(Fore.RED + f"  失败: {e}\n" + Style.RESET_ALL)
+                # 单时区：详细统计模式
+                print_single_timezone_result(summary, trades_df, all_dates, full_curve)
+                save_results(tz_name, trades_df, all_dates, full_curve)
 
-    # 生成汇总（修改部分）
-    if all_summaries:
+        except Exception as e:
+            if is_multi_tz:
+                print(Fore.RED + f" 错误" + Style.RESET_ALL)
+            else:
+                print(Fore.RED + f"  失败: {e}\n" + Style.RESET_ALL)
+
+    # 进度条完成换行
+    if is_multi_tz and all_summaries:
+        print()  # 换行
+
+    # 生成汇总（仅多时区）
+    if all_summaries and is_multi_tz:
         summary_df = pd.DataFrame(all_summaries).sort_values('年化收益率', ascending=False)
 
         # 添加最佳杠杆列
@@ -329,7 +386,7 @@ if __name__ == "__main__":
         summary_df['最佳杠杆'] = (0.2 / (summary_df['最大回撤'] / 100)).round(2)
         # 调整年化收益率 = 原年化收益率 * 最佳杠杆
         summary_df['年化收益率'] = (summary_df['年化收益率'] * summary_df['最佳杠杆'] / 100).round(2)
-        
+
         # 删除指定列
         columns_to_remove = ['初始资金', '结束资金', '覆盖天数', '交易次数', '盈利次数', '亏损次数', '是否爆仓']
         summary_df = summary_df.drop(columns=columns_to_remove)
@@ -370,5 +427,5 @@ if __name__ == "__main__":
                 '最大回撤时长': '{:>11}'.format
             }
         ))
-    else:
+    elif not all_summaries:
         print(Fore.RED + "无成功回测" + Style.RESET_ALL)
