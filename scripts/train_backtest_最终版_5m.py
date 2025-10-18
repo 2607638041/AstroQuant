@@ -35,8 +35,8 @@ OUT_DIR = ROOT_DIR / "results" / "backtest_最终版"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 # 信号列名
-STAR_COL = "星宿"                       # 星宿信号列
-JIAN_XING_COL = "建星"                  # 建星信号列
+STAR_COL = "星宿"                      # 星宿信号列
+JIAN_XING_COL = "建星"                 # 建星信号列
 
 # 定义目标星宿及其参数
 TARGET_STARS = {

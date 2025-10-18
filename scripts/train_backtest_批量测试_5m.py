@@ -19,8 +19,8 @@ warnings.filterwarnings("ignore")
 TIMEZONE_MAP = {
     "UTC+8": "Etc/GMT-8",
     "UTC0": "UTC",
-    **{f"UTC-{i}": f"Etc/GMT+{i}" for i in range(1, 13)},   # UTC 1~12
-    **{f"UTC {i}": f"Etc/GMT-{i}" for i in range(11, 12)}   # UTC 11~12
+    **{f"UTC-{i}": f"Etc/GMT+{i}" for i in range(1, 13)},
+    **{f"UTC+{i}": f"Etc/GMT-{i}" for i in range(11, 12)}
 }
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
@@ -31,7 +31,7 @@ OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 # 策略参数
 TIMEZONE = None                          # None=全时区，"UTC8"=单时区
-TRADE_DIRECTION = "空"                    # "多"/"空"
+TRADE_DIRECTION = "多"                    # "多"/"空"
 STAR_COL = "建星"                      # 信号列名
 
 # 资金管理
@@ -39,13 +39,13 @@ INITIAL_CAPITAL = 1000.0        # 初始资金
 PEAK_PERCENT = 1                # 仓位比例（>1为杠杆）
 TAKE_PROFIT_PERCENT = 1         # 止盈百分比（1 表示 100%）
 STOP_LOSS_PERCENT = 1           # 止损百分比（1 表示 100%）
-START_DATE = None               # 开始日期，格式为 "2020-01-01"，设为 None 表示不限制开始时间
+START_DATE = "2018-04-01"               # 开始日期，格式为 "2020-01-01"，设为 None 表示不限制开始时间
 
 # 交易成本
 TAKER_FEE, MAKER_FEE, FUNDING_RATE, SLIPPAGE = 0.0005, 0.0003, 0.0002, 0.0005
 
-NUM_PROCESSES = max(1, cpu_count() - 3)     #用CPU核心并行总数数减1,（避免占用全部 CPU 资源，保留系统运行空间）
-ENABLE_CHARTS = True                        #是否开启 “图表功能”，
+NUM_PROCESSES = max(1, cpu_count() - 3)
+ENABLE_CHARTS = True
 
 plt.rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei', 'Arial Unicode MS']
 plt.rcParams['axes.unicode_minus'] = False
@@ -53,7 +53,6 @@ plt.rcParams['axes.unicode_minus'] = False
 
 # ==================== 工具函数 ====================
 def format_time(seconds):
-    # 格式化时间显示
     if seconds < 60:
         return f"{int(seconds)}秒"
     elif seconds < 3600:
@@ -62,20 +61,17 @@ def format_time(seconds):
 
 
 def calculate_slippage_price(price, is_long, is_open):
-    # 计算含滑点的成交价
     factor = 1 + SLIPPAGE if is_open else 1 - SLIPPAGE
     return price * factor if is_long else price / factor
 
 
 def check_exit_trigger_vectorized(high, low, tp_price, sl_price, is_long):
-    # 向量化检查止盈止损触发 (1=止盈, 2=止损, 0=未触发)
     if is_long:
         return np.where(high >= tp_price, 1, np.where(low <= sl_price, 2, 0))
     return np.where(low <= tp_price, 1, np.where(high >= sl_price, 2, 0))
 
 
 def preprocess_timezone_data(df_raw, tz_str):
-    # 预处理时区数据
     df = df_raw.copy()
     df["datetime_tz"] = df["datetime"].dt.tz_convert(tz_str)
     df = df.sort_values("datetime_tz").reset_index(drop=True)
@@ -85,7 +81,6 @@ def preprocess_timezone_data(df_raw, tz_str):
 
 # ==================== 回测核心逻辑 ====================
 def build_full_curve(all_dates, processed_dates, capital_curve, initial_capital, liquidated, liq_date):
-    # 构建完整资金曲线
     full_curve = []
     last_capital = initial_capital
     j = 0
@@ -106,29 +101,23 @@ def build_full_curve(all_dates, processed_dates, capital_curve, initial_capital,
 
 
 def calculate_summary_stats(trades, full_curve, all_dates, target_star, tz_name, liquidated, initial_capital):
-    # 计算统计指标
-    # 基础收益率
     final_capital = full_curve[-1]
     days = (all_dates[-1] - all_dates[0]).astype('timedelta64[D]').astype(int) + 1
     years = days / 365.0
     total_return = (final_capital - initial_capital) / initial_capital
     annual_return = -1.0 if final_capital <= 0 else (final_capital / initial_capital) ** (1/years) - 1.0
 
-    # 夏普比率
     pnl_arr = np.array([t["收益_USD"] for t in trades])
     returns = pnl_arr / initial_capital
     sharpe = np.mean(returns) / np.std(returns) * np.sqrt(len(returns)) if len(returns) > 1 and np.std(returns) > 0 else 0
 
-    # 胜率
     wins = np.sum(pnl_arr > 0)
     win_rate = wins / len(pnl_arr)
 
-    # 盈亏比
     win_trades = pnl_arr[pnl_arr > 0]
     loss_trades = pnl_arr[pnl_arr < 0]
     pl_ratio = np.mean(win_trades) / abs(np.mean(loss_trades)) if len(win_trades) > 0 and len(loss_trades) > 0 else 0
 
-    # 最大回撤与最大回撤时长
     equity = np.array(full_curve)
     cummax = np.maximum.accumulate(equity)
     drawdown = (cummax - equity) / np.where(cummax == 0, 1, cummax)
@@ -143,7 +132,6 @@ def calculate_summary_stats(trades, full_curve, all_dates, target_star, tz_name,
             dd_duration = (all_dates[recovery_idx] - all_dates[i]).astype('timedelta64[D]').astype(int)
             max_dd_days = max(max_dd_days, dd_duration)
 
-    # 时区和杠杆计算
     tz_num = int(tz_name.replace("UTC", "")) if tz_name != "UTC0" else 0
     optimal_leverage = 0.2 / max_dd if max_dd > 0 else 0
     adjusted_annual_return = annual_return * optimal_leverage
@@ -165,7 +153,6 @@ def calculate_summary_stats(trades, full_curve, all_dates, target_star, tz_name,
 
 
 def create_empty_summary(target_star, tz_name):
-    # 创建空结果摘要
     tz_num = int(tz_name.replace("UTC", "")) if tz_name != "UTC0" else 0
     return {
         "最佳杠杆": 0,
@@ -184,27 +171,24 @@ def create_empty_summary(target_star, tz_name):
 
 
 def run_single_star_backtest(args):
-    # 单个信号单个时区的回测（支持多进程）
     df, target_star, tz_name, tz_str = args
 
     try:
-        # 识别信号段
         star_mask = (df[STAR_COL] == target_star).values
         segment_starts = np.where(star_mask & ~np.roll(star_mask, 1, axis=0))[0]
 
         if len(segment_starts) == 0:
             return create_empty_summary(target_star, tz_name), None, None, None, None
 
-        # 初始化交易参数
         processed_dates = set()
-        capital = float(INITIAL_CAPITAL)
+        current_capital = float(INITIAL_CAPITAL)
+        max_non_holding_capital = float(INITIAL_CAPITAL)
         daily_closes = []
         trades = []
         capital_curve = []
         liquidated = False
         is_long = (TRADE_DIRECTION == "多")
 
-        # 转换为NumPy数组加速访问
         dates = df["date_tz"].values
         datetimes = df["datetime_tz"].values
         opens = df["open"].values.astype(float)
@@ -212,7 +196,6 @@ def run_single_star_backtest(args):
         highs = df["high"].values.astype(float)
         lows = df["low"].values.astype(float)
 
-        # 遍历每个信号触发点
         for start_idx in segment_starts:
             if liquidated:
                 break
@@ -221,23 +204,19 @@ def run_single_star_backtest(args):
             if start_date in processed_dates:
                 continue
 
-            # 获取当天所有K线
             day_mask = dates == start_date
             day_indices = np.where(day_mask)[0]
 
             if len(day_indices) == 0:
                 continue
 
-            # 开仓
             first_idx = day_indices[0]
             open_price = opens[first_idx]
             open_time = datetimes[first_idx]
 
-            # 计算止盈止损价格
             tp_price = open_price * (1 + TAKE_PROFIT_PERCENT) if is_long else open_price * (1 - TAKE_PROFIT_PERCENT)
             sl_price = open_price * (1 - STOP_LOSS_PERCENT) if is_long else open_price * (1 + STOP_LOSS_PERCENT)
 
-            # 检查是否触发止盈止损
             exit_type = "正常平仓"
             exit_idx = day_indices[-1]
 
@@ -249,20 +228,16 @@ def run_single_star_backtest(args):
                     exit_idx = check_indices[first_trigger]
                     exit_type = "止盈平仓" if triggers[first_trigger] == 1 else "止损平仓"
 
-            # 平仓
             close_price = closes[exit_idx]
             close_time = datetimes[exit_idx]
 
-            # 计算滑点后价格
             open_price_slip = calculate_slippage_price(open_price, is_long, True)
             close_price_slip = calculate_slippage_price(close_price, is_long, False)
 
-            # 计算仓位
-            peak = max(daily_closes) if daily_closes else INITIAL_CAPITAL
-            trade_size = peak * PEAK_PERCENT
+            trade_size = max_non_holding_capital * PEAK_PERCENT
             units = trade_size / open_price_slip
+            leverage = trade_size / current_capital if current_capital > 0 else 0
 
-            # 计算费用和收益
             open_fee = trade_size * TAKER_FEE
             funding_fee = trade_size * FUNDING_RATE
             close_value = units * close_price_slip
@@ -270,15 +245,16 @@ def run_single_star_backtest(args):
             total_fees = open_fee + funding_fee + close_fee
 
             pnl = units * (close_price_slip - open_price_slip) - total_fees if is_long else units * (open_price_slip - close_price_slip) - total_fees
-            prev_capital = capital
-            capital += pnl
+            prev_capital = current_capital
+            current_capital += pnl
 
-            # 检查爆仓
-            if capital <= 0:
-                capital = 0.0
+            if current_capital <= 0:
+                current_capital = 0.0
                 liquidated = True
+            else:
+                max_non_holding_capital = max(max_non_holding_capital, current_capital)
 
-            daily_closes.append(capital)
+            daily_closes.append(current_capital)
             processed_dates.add(start_date)
 
             price_change = (close_price - open_price) / open_price * (1 if is_long else -1)
@@ -290,18 +266,19 @@ def run_single_star_backtest(args):
                 "平仓价": close_price,
                 "方向": TRADE_DIRECTION,
                 "开仓前资金_USD": round(prev_capital, 8),
+                "杠杆基准（U）": round(max_non_holding_capital, 2),
+                "杠杆倍数": round(leverage, 2),
                 "投入(允许杠杆)": round(trade_size, 8),
                 "实际涨跌幅": f"{price_change * 100:.2f}%",
                 "收益_USD": round(pnl, 8),
-                "平仓后资金_USD": round(capital, 8),
+                "平仓后资金_USD": round(current_capital, 8),
                 "平仓类型": exit_type
             })
-            capital_curve.append(capital)
+            capital_curve.append(current_capital)
 
         if not trades:
             return create_empty_summary(target_star, tz_name), None, None, None, None
 
-        # 构建完整资金曲线并计算统计
         all_dates = np.unique(dates)
         full_curve = build_full_curve(all_dates, processed_dates, capital_curve, INITIAL_CAPITAL, liquidated, trades[-1]["开仓时间"] if trades else None)
         summary = calculate_summary_stats(trades, full_curve, all_dates, target_star, tz_name, liquidated, INITIAL_CAPITAL)
@@ -315,7 +292,6 @@ def run_single_star_backtest(args):
 
 # ==================== 结果保存 ====================
 def save_results(target_star, tz_name, trades_df, all_dates, full_curve):
-    # 保存CSV和图表（每个信号独立文件夹）
     if trades_df is None or trades_df.empty:
         return
 
@@ -355,7 +331,6 @@ if __name__ == '__main__':
         print(Fore.YELLOW + "="*50 + "\n    批量回测系统\n" + "="*50 + Style.RESET_ALL)
         print(f"{Fore.GREEN}并行进程数: {NUM_PROCESSES} | 图表生成: {'开启' if ENABLE_CHARTS else '关闭'}{Style.RESET_ALL}\n")
 
-        # 第一步：读取并合并数据
         parquet_files = sorted(DATA_DIR.rglob("*.parquet"))
         if not parquet_files:
             raise FileNotFoundError(f"在 {DATA_DIR} 未找到任何 parquet 文件")
@@ -367,21 +342,17 @@ if __name__ == '__main__':
 
         df["datetime"] = pd.to_datetime(df["datetime"], utc=True)
 
-        # 第二步：获取信号列表并排序
         unique_stars = df[STAR_COL].dropna().unique()
         star_first_occurrence = {star: df[df[STAR_COL] == star].index[0] for star in unique_stars}
         all_xiuxiu = sorted(unique_stars, key=lambda x: star_first_occurrence[x])
         print(f"{Fore.GREEN}信号数量: {len(all_xiuxiu)}{Style.RESET_ALL}")
 
-        # 第三步：确定时区列表
         timezones = [TIMEZONE] if TIMEZONE else list(TIMEZONE_MAP.keys())
         print(f"{Fore.GREEN}测试时区: {TIMEZONE if TIMEZONE else f'全部 ({len(timezones)}个)'}{Style.RESET_ALL}\n")
 
-        # 第四步：预处理时区数据
         print(f"{Fore.CYAN}预处理时区数据...{Style.RESET_ALL}")
         tz_data = {tz_name: preprocess_timezone_data(df, TIMEZONE_MAP[tz_name]) for tz_name in timezones}
 
-        # 第五步：准备并执行回测任务
         tasks = [(tz_data[tz_name], target_star, tz_name, TIMEZONE_MAP[tz_name])
                  for target_star in all_xiuxiu for tz_name in timezones]
         total_tasks = len(tasks)
@@ -416,7 +387,6 @@ if __name__ == '__main__':
 
         print()
 
-        # 第六步：保存汇总结果并显示
         if all_summaries:
             summary_df = pd.DataFrame(all_summaries)
 
@@ -435,7 +405,6 @@ if __name__ == '__main__':
             print(Fore.GREEN + f"结果目录: {OUT_DIR}" + Style.RESET_ALL)
             print(Fore.GREEN + f"总耗时: {elapsed_time:.2f} 秒" + Style.RESET_ALL)
 
-            # 显示TOP 10结果
             top_columns = ['最佳杠杆', '触发信号', '时区', '中国时间', '累计收益率', '年化收益率', '夏普比率', '覆盖年数', '胜率', '盈亏比', '最大回撤', '最大回撤时长']
             top_df = summary_df[top_columns].head(10)
 
