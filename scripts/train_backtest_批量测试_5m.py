@@ -3,17 +3,17 @@
 
 import warnings
 from pathlib import Path
-import matplotlib
-matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from colorama import init, Fore, Style
 from multiprocessing import Pool, cpu_count
 import time
+import matplotlib
+matplotlib.use('Agg')
 
-init(autoreset=True)
-warnings.filterwarnings("ignore")
+init(autoreset=True)                   # 初始化颜色ama
+warnings.filterwarnings("ignore")       # 忽略警告
 
 # ==================== 配置参数 ====================
 TIMEZONE_MAP = {
@@ -26,7 +26,7 @@ TIMEZONE_MAP = {
 ROOT_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = ROOT_DIR / "data" / "merged" / "btc" / "btc_5m"
 OUT_DIR = ROOT_DIR / "results" / "backtest_批量测试"
-OUT_DIR.mkdir(parents=True, exist_ok=True)
+OUT_DIR.mkdir(parents=True, exist_ok=True)        # 创建输出目录
 
 
 # 策略参数
@@ -44,7 +44,7 @@ START_DATE = "2018-04-01"               # 开始日期，格式为 "2020-01-01"�
 # 交易成本
 TAKER_FEE, MAKER_FEE, FUNDING_RATE, SLIPPAGE = 0.0005, 0.0003, 0.0002, 0.0005
 
-NUM_PROCESSES = max(1, cpu_count() - 3)
+NUM_PROCESSES = max(1, cpu_count() - 6)
 ENABLE_CHARTS = True
 
 plt.rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei', 'Arial Unicode MS']
@@ -342,6 +342,19 @@ if __name__ == '__main__':
 
         df["datetime"] = pd.to_datetime(df["datetime"], utc=True)
 
+        # ✅ 关键修复：添加 START_DATE 过滤逻辑
+        if START_DATE is not None:
+            start_date_ts = pd.to_datetime(START_DATE, utc=True)
+            original_len = len(df)
+            df = df[df["datetime"] >= start_date_ts].reset_index(drop=True)
+            print(f"{Fore.GREEN}已过滤数据: 开始日期 >= {START_DATE}{Style.RESET_ALL}")
+            print(f"{Fore.GREEN}原始行数: {original_len} → 过滤后: {len(df)}{Style.RESET_ALL}\n")
+
+            if df.empty:
+                raise RuntimeError(f"在 {START_DATE} 之后没有找到任何数据")
+        else:
+            print(f"{Fore.GREEN}未设置开始日期，使用全部历史数据{Style.RESET_ALL}\n")
+
         unique_stars = df[STAR_COL].dropna().unique()
         star_first_occurrence = {star: df[df[STAR_COL] == star].index[0] for star in unique_stars}
         all_xiuxiu = sorted(unique_stars, key=lambda x: star_first_occurrence[x])
@@ -419,8 +432,10 @@ if __name__ == '__main__':
             print(Fore.RED + "\n无成功回测结果" + Style.RESET_ALL)
 
     except KeyboardInterrupt:
-        print(f"\n{Fore.YELLOW}程序被用户中断{Style.RESET_ALL}")
+        print(f"\n{Fore.YELLOW}【用户中断】你按了停止键{Style.RESET_ALL}")
+    except MemoryError:
+        print(f"\n{Fore.RED}【严重错误】内存不足，系统内存爆了！请关闭其他程序或减少进程数{Style.RESET_ALL}")
+    except FileNotFoundError:
+        print(f"\n{Fore.RED}【文件错误】找不到数据文件，检查路径是否正确: {DATA_DIR}{Style.RESET_ALL}")
     except Exception as e:
-        print(Fore.RED + f"\n程序执行错误: {e}{Style.RESET_ALL}")
-        import traceback
-        traceback.print_exc()
+        print(f"\n{Fore.RED}【严重错误】主程序出错: {type(e).__name__} - {str(e)[:100]}{Style.RESET_ALL}")

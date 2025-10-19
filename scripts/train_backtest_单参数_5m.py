@@ -31,11 +31,11 @@ TRADE_DIRECTION = "多"                    # "多"/"空"
 STAR_COL, TARGET_STAR = "星宿", "轸宿"     # 信号列名，信号参数
 
 # 资金管理
-INITIAL_CAPITAL = 1000.0        # 初始资金
-PEAK_PERCENT = 1.5                # 仓位比例（>1为杠杆）
-TAKE_PROFIT_PERCENT = 1         # 止盈百分比（1 表示 100%）
-STOP_LOSS_PERCENT = 1           # 止损百分比（1 表示 100%）
-START_DATE = None               # 开始日期，格式为 "2020-01-01"，设为 None 表示不限制开始时间
+INITIAL_CAPITAL = 1000.0              # 初始资金
+PEAK_PERCENT = 1.5                     # 仓位比例（>1为杠杆）
+TAKE_PROFIT_PERCENT = 1                # 止盈百分比（1 表示 100%）
+STOP_LOSS_PERCENT = 0.18               # 止损百分比（1 表示 100%）
+START_DATE = "2018-04-01"               # 开始日期，格式为 YYYY-MM-DD，设为 None 表示不限制开始时间
 
 # 交易成本
 TAKER_FEE, MAKER_FEE, FUNDING_RATE, SLIPPAGE = 0.0005, 0.0003, 0.0002, 0.0005
@@ -342,6 +342,12 @@ if __name__ == "__main__":
 
     df = pd.concat([pd.read_parquet(p) for p in parquet_files], ignore_index=True)
     df["datetime"] = pd.to_datetime(df["datetime"], utc=True)
+
+    # 【修复】应用START_DATE过滤
+    if START_DATE is not None:
+        start_date_pd = pd.to_datetime(START_DATE, utc=True)
+        df = df[df["datetime"] >= start_date_pd].reset_index(drop=True)
+        print(Fore.CYAN + f"数据范围: {START_DATE} 至 {df['datetime'].max().strftime('%Y-%m-%d')}\n" + Style.RESET_ALL)
 
     # 确定时区
     timezones = list(TIMEZONE_MAP.keys()) if TIMEZONE is None else [TIMEZONE]
