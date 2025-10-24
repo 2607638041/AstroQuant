@@ -14,17 +14,14 @@ merge_features.py
 import os
 import re
 import pandas as pd
-from datetime import datetime
 
-# -----------------------
-# 配置路径（按你的工程目录结构）
-# -----------------------
-ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
-BTC_DIR = os.path.join(ROOT_DIR, 'data', 'btc_data_5m')
-ASTRO_DIR = os.path.join(ROOT_DIR, 'data', 'astro_data')
-MERGED_DIR = os.path.join(ROOT_DIR, 'data', 'merged', 'btc', 'btc_5m')
+# 参数设置
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))     # 工程根目录
+BTC_DIR = os.path.join(ROOT_DIR, 'data', 'btc_data_5m')                             # BTC 数据目录
+ASTRO_DIR = os.path.join(ROOT_DIR, 'data', 'astro_data')                            # 玄学数据目录
+MERGED_DIR = os.path.join(ROOT_DIR, 'data', 'merged', 'btc', 'btc_5m')              # 合并后数据输出目录
 
-# 玄学文件名映射（按需调整）
+# 玄学数据文件名
 ASTRO_FILES = {
     '九星': '九星.parquet',
     '十二建星': '十二建星.parquet',
@@ -33,18 +30,16 @@ ASTRO_FILES = {
     '节气': '节气.parquet'
 }
 
-os.makedirs(MERGED_DIR, exist_ok=True)
+os.makedirs(MERGED_DIR, exist_ok=True)  # 创建输出目录
 
-# -----------------------
-# 工具函数
-# -----------------------
+# 获取日期列名
 def find_date_column(df: pd.DataFrame):
-    """查找可能的日期列名（支持 '日期','时间','date' 等）"""
     for c in df.columns:
         if 'date' in c.lower() or '时间' in c or '日期' in c:
             return c
     return None
 
+# 转换为 datetime 格式，容错性强
 def safe_to_datetime(s, utc=True):
     try:
         return pd.to_datetime(s, errors='coerce', utc=utc)
@@ -53,8 +48,8 @@ def safe_to_datetime(s, utc=True):
             return pd.Series([pd.NaT] * len(s))
         return pd.NaT
 
+# 清洗 BTC 数据
 def clean_btc_df(df: pd.DataFrame):
-    """清洗 BTC 数据：保证 datetime 列存在、类型转换、去重排序"""
     df = df.copy()
     if 'datetime' not in df.columns:
         raise ValueError("BTC 文件缺少 datetime 列")
@@ -65,6 +60,7 @@ def clean_btc_df(df: pd.DataFrame):
             df[col] = pd.to_numeric(df[col], errors='coerce')
     return df.sort_values('datetime').reset_index(drop=True)
 
+# 清洗合并后数据
 def clean_merged_df(df: pd.DataFrame):
     """清洗合并后数据：保证 datetime 存在、数值列、节气 ffill、去重排序"""
     df = df.copy()
@@ -80,6 +76,7 @@ def clean_merged_df(df: pd.DataFrame):
     df = df.drop_duplicates(subset=['datetime']).sort_values('datetime').reset_index(drop=True)
     return df
 
+# 转换 datetime 为字符串格式
 def datetime_to_str(df: pd.DataFrame, fmt="%Y-%m-%d %H:%M"):
     """把 datetime 转为字符串格式（用于写文件）"""
     df = df.copy()
@@ -88,11 +85,8 @@ def datetime_to_str(df: pd.DataFrame, fmt="%Y-%m-%d %H:%M"):
         df['datetime'] = df['datetime'].dt.strftime(fmt)
     return df
 
-# -----------------------
-# 读取并合并玄学 master
-# -----------------------
+# 加载玄学数据
 def load_astro_master():
-    """读取 ASTRO_DIR 下定义的玄学文件，合并为 master，生成 datetime 和 date 列"""
     print("开始加载玄学数据...")
     dfs = []
     try:
@@ -150,15 +144,14 @@ def load_astro_master():
     print("玄学 master 构建完成，形状:", master.shape)
     return master
 
-# -----------------------
-# 从文件名提取 年 或 年月
-# -----------------------
+# 获取年份
 def extract_year_from_filename(fname: str):
     m = re.search(r'(19|20)\d{2}', fname)
     if m:
         return m.group(0)
     return None
 
+# 获取年月
 def extract_year_month_from_filename(fname: str):
     m = re.search(r'((19|20)\d{2})[^\d]?([01]\d)', fname)
     if m:
@@ -166,9 +159,7 @@ def extract_year_month_from_filename(fname: str):
     y = extract_year_from_filename(fname)
     return (y, None) if y else (None, None)
 
-# -----------------------
-# 合并 BTC 与玄学（按天对齐）
-# -----------------------
+# 合并数据
 def merge_to_btc_df(btc_df: pd.DataFrame, astro_master: pd.DataFrame):
     btc_df = clean_btc_df(btc_df)
     btc_df['date'] = btc_df['datetime'].dt.floor('D')
@@ -197,9 +188,7 @@ def merge_to_btc_df(btc_df: pd.DataFrame, astro_master: pd.DataFrame):
         merged = merged.drop(columns=['date'])
     return merged
 
-# -----------------------
-# 主流程：年文件写根目录，月文件写年子目录
-# -----------------------
+# 合并所有数据
 def merge_all(datetime_fmt="%Y-%m-%d %H:%M"):
     astro_master = load_astro_master()
     if astro_master is None:
@@ -259,6 +248,7 @@ def merge_all(datetime_fmt="%Y-%m-%d %H:%M"):
             except Exception as e:
                 print(f"处理 {yd}/{mf} 失败：{e}")
 
+# 主函数
 if __name__ == "__main__":
     merge_all()
     # TODO: 进度条未处理

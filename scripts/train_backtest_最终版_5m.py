@@ -35,7 +35,7 @@ SIGNAL_CLASSIFICATION = {
         "轸宿": {
             "PEAK_PERCENT": 1.5,
             "TAKE_PROFIT_PERCENT": 0.107,
-            "STOP_LOSS_PERCENT": 0.053,
+            "STOP_LOSS_PERCENT": 0.090,
             "TIMEZONE": "UTC0"
         },                                  #完成
         "柳宿": {
@@ -60,7 +60,7 @@ SIGNAL_CLASSIFICATION = {
             "PEAK_PERCENT": 1.8,
             "TAKE_PROFIT_PERCENT": 0.1,
             "STOP_LOSS_PERCENT": 0.1,
-            "TIMEZONE": "UTC+11"
+            "TIMEZONE": "UTC+8"
         },
         "参宿": {
             "PEAK_PERCENT": 1,
@@ -85,20 +85,20 @@ SIGNAL_CLASSIFICATION = {
             "PEAK_PERCENT": 0.75,
             "TAKE_PROFIT_PERCENT": 0.1,
             "STOP_LOSS_PERCENT": 0.1,
-            "TIMEZONE": "UTC0"
+            "TIMEZONE": "UTC-12"
         },
     },
     "建星": {
         "危": {
             "PEAK_PERCENT": 1.2,
-            "TAKE_PROFIT_PERCENT": 0.1,
-            "STOP_LOSS_PERCENT": 0.1,
-            "TIMEZONE": "UTC-12"
+            "TAKE_PROFIT_PERCENT": 0.2,
+            "STOP_LOSS_PERCENT": 0.2,
+            "TIMEZONE": "UTC-11"
         },
         "除": {
             "PEAK_PERCENT": 1.05,
-            "TAKE_PROFIT_PERCENT": 0.1,
-            "STOP_LOSS_PERCENT": 0.1,
+            "TAKE_PROFIT_PERCENT": 0.08,
+            "STOP_LOSS_PERCENT": 0.12,
             "TIMEZONE": "UTC+8"
         },
     }
@@ -451,14 +451,13 @@ if __name__ == '__main__':
     try:
         start_time = time.time()
         print(Fore.YELLOW + "="*50 + "\n    信号交易回测系统\n" + "="*50 + Style.RESET_ALL)
-        print(f"{Fore.GREEN}图表生成: {'开启' if ENABLE_CHARTS else '关闭'}{Style.RESET_ALL}\n")
+        print(f"{Fore.GREEN}图表生成: {'开启' if ENABLE_CHARTS else '关闭'}{Style.RESET_ALL}")
 
         # 加载数据
         parquet_files = sorted(DATA_DIR.rglob("*.parquet"))
         if not parquet_files:
             raise FileNotFoundError(f"在 {DATA_DIR} 未找到任何 parquet 文件")
 
-        print(f"{Fore.CYAN}加载数据...{Style.RESET_ALL}")
         dfs = [pd.read_parquet(p) for p in parquet_files]
         df = pd.concat(dfs, ignore_index=True)
 
@@ -466,7 +465,6 @@ if __name__ == '__main__':
             raise RuntimeError("合并后的 DataFrame 为空")
 
         df["datetime"] = pd.to_datetime(df["datetime"], utc=True)
-        print(f"{Fore.GREEN}原始数据时间范围: {df['datetime'].min()} ~ {df['datetime'].max()}{Style.RESET_ALL}")
 
         # 应用 START_DATE 过滤
         start_date_ts = pd.to_datetime(START_DATE, utc=True)
@@ -476,8 +474,7 @@ if __name__ == '__main__':
             raise RuntimeError(f"起始时间设置为 {START_DATE}，过滤后无数据。"
                              f"请检查数据是否包含该日期之后的记录。")
 
-        print(f"{Fore.GREEN}已应用起始时间过滤 ({START_DATE}){Style.RESET_ALL}")
-        print(f"{Fore.GREEN}过滤后数据时间范围: {df['datetime'].min()} ~ {df['datetime'].max()}{Style.RESET_ALL}\n")
+        print(f"{Fore.GREEN}数据时间范围: {df['datetime'].min()} ~ {df['datetime'].max()}{Style.RESET_ALL}\n")
 
         # 执行回测
         print(f"{Fore.CYAN}执行回测...{Style.RESET_ALL}")

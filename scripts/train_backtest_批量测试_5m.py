@@ -32,7 +32,7 @@ OUT_DIR.mkdir(parents=True, exist_ok=True)        # 创建输出目录
 # 策略参数
 TIMEZONE = None                          # None=全时区，"UTC+8"=单时区
 TRADE_DIRECTION = "多"                   # "多"/"空"
-STAR_COL = "星宿"                         # 信号列名
+STAR_COL = "日柱"                         # 信号列名
 
 # 资金管理
 INITIAL_CAPITAL = 1000.0                # 初始资金
@@ -44,7 +44,7 @@ START_DATE = "2018-04-01"               # 开始日期，格式为 "2020-01-01"�
 # 交易成本
 TAKER_FEE, MAKER_FEE, FUNDING_RATE, SLIPPAGE = 0.0005, 0.0003, 0.0002, 0.0005
 
-NUM_PROCESSES = max(1, cpu_count() - 6)
+NUM_PROCESSES = max(1, cpu_count() - 8)
 ENABLE_CHARTS = True
 
 plt.rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei', 'Arial Unicode MS']
